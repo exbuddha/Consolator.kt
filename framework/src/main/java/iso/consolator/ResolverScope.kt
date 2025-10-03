@@ -14,7 +14,7 @@ interface Resolver : ResolverScope {
     fun commit(vararg context: Any?): Unit?
 }
 
-sealed interface ResolverScope : RepetitionScope, Transactor<AnyCoroutineStep, ResolverTransactionIdentityType>, LoggerScope
+sealed interface ResolverScope : RepetitionScope, CoroutineStepTransactor, LoggerScope
 
 sealed interface CallableResolverScope : CallableRepetitionScope, CallableTransactor<CallableTransactionIdentityType> {
     fun <I : LifecycleOwner> I.call(step: AnyKCallable, vararg args: Any?): CallableTransactionIdentityType
@@ -35,6 +35,8 @@ sealed interface CallableTransactor<R> : Transactor<KCallable<R>, ResolverTransa
 sealed interface Transactor<T, out R> {
     fun commit(step: T): R
 }
+
+internal typealias CoroutineStepTransactor = Transactor<AnyCoroutineStep, ResolverTransactionIdentityType>
 
 // job extensions provide detailed continuations for each step
 // items group contains and clears them when scope changes to background

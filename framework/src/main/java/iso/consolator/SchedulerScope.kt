@@ -163,7 +163,7 @@ interface BaseServiceScope : ResolverScope, ReferredContext, UniqueContext.Insta
 }
 
 sealed interface SchedulerScope : ResolverScope {
-    companion object : DefaultScope by ImplicitScope, ProcessScope {
+    companion object : DefaultScope by ImplicitScope, ProcessScope, CoroutineStepTransactor {
         @JvmStatic fun Application.commitStart(component: KClass<out Service>) {
             commitStart()
             if (typeIs<BaseServiceScope, _>(component) or
@@ -706,6 +706,8 @@ sealed interface SchedulerScope : ResolverScope {
         @JvmStatic fun findClass(className: String) = Class.forName(className).kotlin
 
         @JvmStatic operator fun invoke() = DEFAULT_RESOLVER ?: Scheduler
+
+        override fun commit(step: AnyCoroutineStep): ResolverTransactionIdentityType = null // register step
     }
 
     override fun commit(step: AnyCoroutineStep) =

@@ -51,13 +51,13 @@ internal val processLifecycleScope
 /* set instance as context parameter */
 @Throws
 fun touchContext(context: Context) {
-    mainUncaughtExceptionHandler = context.asTypeUnsafe()
-    with(mainUncaughtExceptionHandler) {
-    setTo(
-        ::mainUncaughtExceptionHandler,
-        ::uncaughtException.tag) }
-    Thread.setDefaultUncaughtExceptionHandler(
-        mainUncaughtExceptionHandler) }
+    mainUncaughtExceptionHandler = context.asTypeUnsafe<MainUncaughtExceptionHandler>()
+        .apply(Thread::setDefaultUncaughtExceptionHandler)
+    SchedulerScope.commit {
+        with(mainUncaughtExceptionHandler) {
+        setTo(
+            ::mainUncaughtExceptionHandler,
+            ::uncaughtException.tag) } } }
 
 @Tag(UNCAUGHT_SHARED)
 lateinit var mainUncaughtExceptionHandler: MainUncaughtExceptionHandler
