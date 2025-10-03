@@ -43,7 +43,6 @@ import kotlinx.coroutines.flow.*
 import androidx.core.content.ContextCompat.RECEIVER_EXPORTED
 import kotlinx.coroutines.Dispatchers.Default
 import kotlinx.coroutines.Dispatchers.Main
-import android.annotation.SuppressLint
 
 interface BaseServiceScope : ResolverScope, ReferredContext, UniqueContext.Instance {
     fun Intent?.invoke(flags: Int, startId: Int, mode: Int): Int? {
@@ -707,7 +706,9 @@ sealed interface SchedulerScope : ResolverScope {
 
         @JvmStatic operator fun invoke() = DEFAULT_RESOLVER ?: Scheduler
 
-        override fun commit(step: AnyCoroutineStep): ResolverTransactionIdentityType = null // register step
+        override fun commit(step: AnyCoroutineStep): ResolverTransactionIdentityType =
+            with(State) { onValueTypeChanged(Resolved::class) {
+                SchedulerScope().commit(step) } }
     }
 
     override fun commit(step: AnyCoroutineStep) =

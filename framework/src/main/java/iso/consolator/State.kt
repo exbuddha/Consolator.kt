@@ -303,7 +303,13 @@ sealed interface State {
 
         // enables communication with internal state referables
         // include a contextual function with state descriptor as parameter type
-        override fun <A : State, B : State> A.onValueChanged(value: B, block: BaseStateDescriptor.(State) -> Any?) = TODO()
+        override fun <A : State, B : State> A.onValueChanged(value: B, block: BaseStateDescriptor.(State) -> Any?): DirectStateDescriptor =
+            when (this) {
+            this@Companion -> {
+                // register commit block
+                this@Companion }
+            else ->
+                TODO() }
 
         override fun <A : State, T : StateType> A.onValueTypeChanged(type: T, block: BaseStateDescriptor.(State) -> Any?) = TODO()
 
