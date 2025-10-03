@@ -1,0 +1,9 @@
+*
+!.gitignore
+!build.gradle.kts
+
+!/src/
+!/src/main/
+!/src/main/**
+!/src/main/res/**
+/src/main/res/mipmap*
