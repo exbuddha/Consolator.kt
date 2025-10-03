@@ -1,0 +1,7 @@
+*
+!.gitignore
+!build.gradle.kts
+
+!/src/
+!/src/main/
+!/src/main/**

@@ -1,0 +1,4 @@
+*
+!.gitignore
+!gradle.xml
+!vcs.xml
