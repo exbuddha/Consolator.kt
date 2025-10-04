@@ -708,7 +708,7 @@ sealed interface SchedulerScope : ResolverScope {
 
         override fun commit(step: AnyCoroutineStep): ResolverTransactionIdentityType =
             with(State) { onValueTypeChanged(Resolved::class) {
-                SchedulerScope().commit(step) } }
+                this@Companion().commit(step) } }
     }
 
     override fun commit(step: AnyCoroutineStep) =

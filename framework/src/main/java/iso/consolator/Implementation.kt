@@ -60,7 +60,7 @@ fun touchContext(context: Context) {
             ::uncaughtException.tag) } } }
 
 @Tag(UNCAUGHT_SHARED)
-lateinit var mainUncaughtExceptionHandler: MainUncaughtExceptionHandler
+internal lateinit var mainUncaughtExceptionHandler: MainUncaughtExceptionHandler
 
 interface MainUncaughtExceptionHandler : ExceptionHandler, ExceptionHandlerReceptor {
     override fun <R> ReceiverItem<R>.set(value: R): ExceptionHandlerReceptor {
