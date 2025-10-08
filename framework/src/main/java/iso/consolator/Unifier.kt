@@ -11,6 +11,7 @@ import kotlin.reflect.*
 
 // sets granularity for parts of code blocks inside controller units of logic that allow it
 // cooperativeness is one good use case
+// granularity and throughput together with device's processing speed set the fluidity of the program logic at runtime
 internal enum class Granularity { Maximal, Blocked, Linear, Coarse, Hard, Soft, Minimal }
 
 internal sealed interface Unifier

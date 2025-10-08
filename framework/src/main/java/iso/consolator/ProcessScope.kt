@@ -26,7 +26,7 @@ val currentThread
     get() = Thread.currentThread()
 
 val Thread.isMainThread
-    get() = this isObject main_thread
+    get() = isObject(main_thread)
 
 internal val main_thread = currentThread
 
