@@ -6,8 +6,10 @@ package iso.consolator
 import android.app.*
 import android.content.*
 import android.content.pm.*
+import android.content.res.Configuration
 import android.net.*
 import androidx.core.content.*
+import androidx.core.os.LocaleListCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.*
 import androidx.room.*
@@ -15,13 +17,13 @@ import ctx.consolator.*
 import data.consolator.*
 import data.consolator.dao.*
 import iso.consolator.annotation.*
-import iso.consolator.component.SchedulerApplication
+import iso.consolator.component.*
+import iso.consolator.component.SchedulerActivity.*
 import iso.consolator.exception.SchedulerIntent
 import iso.consolator.reflect.*
 import java.lang.*
 import kotlin.reflect.*
 import kotlinx.coroutines.*
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
 internal lateinit var instance: Application
@@ -34,29 +36,74 @@ internal var receiver: BroadcastReceiver? = null
 internal val foregroundContext: Context
     get() = service?.asContext() ?: instance
 
-internal val foregroundActivity
+internal val foregroundActivity: Activity?
     get() = foregroundLifecycleOwner?.let {
         if (it is Activity) it
         else it.asFragment()?.activity } as? Activity
 
-internal val foregroundFragment
+internal val foregroundFragment: Fragment?
     get() = foregroundLifecycleOwner?.asFragment()
 
 internal var foregroundLifecycleOwner: LifecycleOwner? = null
     set(value) {
         field = ::foregroundLifecycleOwner.receiveUniquely(value) }
 
-internal val processLifecycleScope
-    get() = ProcessLifecycleOwner.get().lifecycleScope
+internal val processLifecycleScope: LifecycleCoroutineScope
+    get() = processLifecycleOwner.lifecycleScope
 
-/* set instance as context parameter */
+private val processLifecycleOwner: LifecycleOwner
+    get() = ProcessLifecycleOwner.get()
+
+@Key(1)
+var applicationMigrationManager: ApplicationMigrationManager? = null
+
+@Key(2)
+var activityConfigurationChangeManager: ConfigurationChangeManager? = null
+
+@Key(3)
+var activityNightModeChangeManager: NightModeChangeManager? = null
+
+@Key(4)
+var activityLocalesChangeManager: LocalesChangeManager? = null
+
+context(provider: Context)
+internal fun commitToMigrationManager(vararg context: Any?): Unit? =
+    ::applicationMigrationManager.requireThenCommit(provider, *context)
+
+context(provider: Context)
+internal fun commitToMemoryManager(level: Int): Unit? =
+    provider.asObjectProvider()?.provide(MemoryManager::class)?.asMemoryManager()?.commit(level)
+
+context(provider: Context)
+internal fun commitToConfigurationChangeManager(newConfig: Configuration): Unit? =
+    ::activityConfigurationChangeManager.requireThenCommit(provider, newConfig)
+
+context(provider: Context)
+internal fun commitToNightModeChangeManager(mode: Int): Unit? =
+    ::activityNightModeChangeManager.requireThenCommit(provider, mode)
+
+context(provider: Context)
+internal fun commitToLocalesChangeManager(locales: LocaleListCompat): Unit? =
+    ::activityLocalesChangeManager.requireThenCommit(provider, locales)
+
+private inline fun <reified T : Resolver> KMutableProperty<T?>.requireThenCommit(provider: Any, vararg context: Any?): Unit? =
+    require(provider)?.commit(*context)
+
+fun clearResolverObjects() {
+    activityConfigurationChangeManager = null
+    activityNightModeChangeManager = null
+    activityLocalesChangeManager = null
+    applicationMigrationManager = null }
+
 @Throws
-fun Application.touchContext(context: Context = this) {
+context(instance: Application)
+internal fun touchContext(context: Context = instance) {
     if (context is MainUncaughtExceptionHandler) {
         mainUncaughtExceptionHandler = context
             .apply(Thread::setDefaultUncaughtExceptionHandler)
-        State[-1] = State.Resolved }
-    if (this is SchedulerApplication)
+        (State of ::mainUncaughtExceptionHandler)[-1] = State.Resolved }
+    if (instance.typeIs<SchedulerApplication, _>())
+        with(processLifecycleOwner) {
         currentThread.from(
             APP_INIT,
             SchedulerScope) {
@@ -65,7 +112,7 @@ fun Application.touchContext(context: Context = this) {
             .withLazy(::mainUncaughtExceptionHandler) {
             setTo(
                 ::mainUncaughtExceptionHandler,
-                ::uncaughtException.tag) } } } }
+                ::uncaughtException.tag) } } } } }
 
 @Tag(UNCAUGHT_SHARED)
 internal lateinit var mainUncaughtExceptionHandler: MainUncaughtExceptionHandler
@@ -97,19 +144,19 @@ sealed interface SchedulerConjunction<in T, out R> : suspend (CoroutineScope?, T
 
 // context change functions - repository
 
-internal inline fun <R> withForegroundContext(block: Context.() -> R) =
+internal inline fun <R> withForegroundContext(block: Context.() -> R): R =
     with(foregroundContext, block)
 
-internal fun Context.change(stage: ContextStep) =
+internal fun Context.change(stage: ContextStep): ResolverTransactionIdentityType =
     commit { stage(this) }
 
-internal fun Context.changeLocally(owner: LifecycleOwner, stage: ContextStep) =
+internal fun Context.changeLocally(owner: LifecycleOwner, stage: ContextStep): ResolverTransactionIdentityType =
     commit { stage(this) }
 
-internal fun Context.changeBroadly(ref: WeakContext = asWeakReference(), stage: ContextStep) =
+internal fun Context.changeBroadly(ref: WeakContext = asWeakReference(), stage: ContextStep): ResolverTransactionIdentityType =
     commit { stage(this) }
 
-internal fun Context.changeGlobally(owner: LifecycleOwner, ref: WeakContext = asWeakReference(), stage: ContextStep) =
+internal fun Context.changeGlobally(owner: LifecycleOwner, ref: WeakContext = asWeakReference(), stage: ContextStep): ResolverTransactionIdentityType =
     commit { stage(this) }
 
 internal suspend fun updateNetworkState() {
@@ -130,10 +177,10 @@ internal suspend fun updateNetworkCapabilities(network: Network? = iso.consolato
         signalStrength,
         network.hashCode()) } } }
 
-internal inline fun <reified D : RoomDatabase> buildDatabase(context: Context) =
+internal inline fun <reified D : RoomDatabase> buildDatabase(context: Context): D =
     buildDatabase(context, D::class)
 
-internal inline fun <reified D : RoomDatabase> commitBuildDatabase(context: Context, instance: KMutableProperty<out D?>) =
+internal inline fun <reified D : RoomDatabase> commitBuildDatabase(context: Context, instance: KMutableProperty<out D?>): D =
     instance.requireAsync(constructor = { buildDatabase<D>(context).also(instance::setInstance) })
 
 internal interface DatabaseContext : SchedulerContext
@@ -163,42 +210,42 @@ internal fun clearAllDbObjects() {
 internal fun clearSessionObjects() {
     session = null }
 
-internal fun Context.isPermissionGranted(permission: String) =
+internal fun Context.isPermissionGranted(permission: String): Boolean =
     ContextCompat.checkSelfPermission(this, permission) `is` PackageManager.PERMISSION_GRANTED
 
-internal fun Context.intendFor(cls: Class<*>) = Intent(this, cls)
-internal fun Context.intendFor(cls: AnyKClass) = intendFor(cls.java)
+internal fun Context.intendFor(cls: Class<*>): Intent = Intent(this, cls)
+internal fun Context.intendFor(cls: AnyKClass): Intent = intendFor(cls.java)
 
-internal val Context.startTime
+internal val Context.startTime: Time
     get() = uniqueStartTime()
 
-internal fun Context.uniqueStartTime(fallback: LongFunction = { -1L }) =
+internal fun Context.uniqueStartTime(fallback: LongFunction = { -1L }): Time =
     if (this is UniqueContext.Instance) uid
     else fallback()
 
-internal fun Context.uniqueStartTimeOrNow() =
+internal fun Context.uniqueStartTimeOrNow(): Time =
     uniqueStartTime(::now)
 
 internal typealias ContextStep = suspend Context.(Any?) -> Any?
 
 internal open class Propagate : SchedulerIntent()
 
-internal inline fun <reified T : Any> T?.defaultSingleton(crossinline constructor: () -> T = { T::class.new() }, lock: Any = T::class.lock) =
+internal inline fun <reified T : Any> T?.defaultSingleton(crossinline constructor: () -> T = { T::class.new() }, lock: Any = T::class.lock): T =
     commitAsyncForResult(lock, { isNullValue() }, constructor, { this }) as T
 
-internal inline fun <reified T : Any> T?.singleton(vararg args: Any?, noinline constructor: (VarArray) -> T = { it.asNew() }, lock: Any = T::class.lock) =
+internal inline fun <reified T : Any> T?.singleton(vararg args: Any?, noinline constructor: (VarArray) -> T = { it.asNew() }, lock: Any = T::class.lock): T =
     defaultSingleton(args.with(constructor), lock)
 
-internal inline fun <reified T : Any> T?.reconstruct(vararg args: Any?, constructor: KCallable<T?> = T::class::new) =
+internal inline fun <reified T : Any> T?.reconstruct(vararg args: Any?, constructor: KCallable<T?> = T::class::new): T? =
     require { args.runCall<T?>(constructor) }
 
-internal inline fun <reified T : Any> T?.reconstruct(vararg args: Any?) =
+internal inline fun <reified T : Any> T?.reconstruct(vararg args: Any?): T =
     require(args::asNew)
 
-internal inline fun <T> T?.require(constructor: () -> T) =
+internal inline fun <T> T?.require(constructor: () -> T): T =
     this ?: constructor()
 
-internal inline fun <reified T> KMutableProperty<out T?>.instantiate(provider: Any = T::class) =
+internal inline fun <reified T> KMutableProperty<out T?>.instantiate(provider: Any = T::class): KMutableProperty<out T?> =
     applyRenew {
     when (provider) {
         Activity::class,
@@ -212,14 +259,14 @@ internal inline fun <reified T> KMutableProperty<out T?>.instantiate(provider: A
         else ->
             reconstruct(provider) } as? T }
 
-internal inline fun <reified T> KMutableProperty<out T?>.reconstruct(provider: Any = T::class) =
+internal inline fun <reified T> KMutableProperty<out T?>.reconstruct(provider: Any = T::class): KMutableProperty<out T?> =
     applyRenew {
     (if (provider is AnyKClass)
         provider.emptyConstructor.call()
     else
         provider.provide(T::class)) as T }
 
-private inline fun <T> KMutableProperty<out T?>.applyRenew(constructor: () -> T? = ::getInstance) =
+private inline fun <T> KMutableProperty<out T?>.applyRenew(constructor: () -> T? = ::getInstance): KMutableProperty<out T?> =
     apply { renew(constructor) }
 
 internal inline fun <T> KMutableProperty<out T?>.renew(constructor: () -> T? = ::getInstance) {
@@ -229,12 +276,12 @@ internal inline fun <T> KMutableProperty<out T?>.renew(constructor: () -> T? = :
 internal inline fun <reified T> KMutableProperty<out T?>.require(provider: Any = T::class) =
     reconstruct(provider).getInstance()
 
-internal inline fun <T> KMutableProperty<out T?>.require(predicate: (T) -> Boolean = ::trueWhenNull, constructor: () -> T? = ::getInstance) =
+internal inline fun <T> KMutableProperty<out T?>.require(predicate: (T) -> Boolean = ::trueWhenNull, constructor: () -> T? = ::getInstance): T =
     getInstance().runWhen(
         { it === null || predicate(it) },
         { constructor()!!.also(this@require::setInstance) })!!
 
-internal inline fun <T> KMutableProperty<out T?>.requireAsync(predicate: (T) -> Boolean = ::trueWhenNull, constructor: () -> T? = ::getInstance) =
+internal inline fun <T> KMutableProperty<out T?>.requireAsync(predicate: (T) -> Boolean = ::trueWhenNull, constructor: () -> T? = ::getInstance): T =
     require(predicate) {
         synchronized(this) {
             require(predicate, constructor) } }

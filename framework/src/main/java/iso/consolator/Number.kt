@@ -19,36 +19,40 @@ internal open class PreciseNumber() : BaseNumber() {
     protected open fun clear() {
         order = Unit }
 
-    // with context parameters, this function becomes isolated to solution contexts
-    // for example, a precise number may become aware by context in order to adjust/lock its operation context
-    // a precise number can choose to expose any arbitrary number, such as its numeric base value, in unknown contexts
-    // while exposing its real value, for instance in a different base, given the context it is accessed from
-    override val getOrder: NumberPointer = ::translate
+    override val getOrder: NumberPointer = { translate() }
 
-    override fun invokeOrder() = order as? Number ?: getOrder.invoke()
+    override fun invokeOrder(): Number = order as? Number ?: getOrder.invoke()
 
     protected var unifier: NumericUnifier = Companion
         private set
 
-    // with context parameters, set the context of operation or intercept result
-    private inline fun <reified N : Number> translate() =
-        with(order) { when (this) {
-            is String ->
-                run(unifier::unifyString)
-            is CharSequence ->
-                run(unifier::unifyCharSequence)
-            is AnyPair ->
-                run(unifier::unifyPair)
-            is AnyTriple ->
-                run(unifier::unifyTriple)
-            is AnyArray ->
-                run(unifier::unifyArray)
-            is AnyIterable ->
-                run(unifier::unifyIterable)
-            is Number -> /* move up if visibility changes to non-private */
-                run(unifier::unifyNumber)
-            else ->
-                run(unifier::unifyAny) } as N }
+    // with context parameters, this function becomes isolated to solution contexts
+    // for example, a precise number may become aware by context in order to adjust/lock its operation context
+    // a precise number can choose to expose any arbitrary number, such as its numeric base value, in unknown contexts
+    // while exposing its real value, for instance in a different base, given the context it is accessed from
+    context(scope: Any?)
+    private inline fun <reified N : Number> translate(): N =
+        when (scope) {
+        this ->
+            with(order) { when (this) {
+                is String ->
+                    run(unifier::unifyString)
+                is CharSequence ->
+                    run(unifier::unifyCharSequence)
+                is AnyPair ->
+                    run(unifier::unifyPair)
+                is AnyTriple ->
+                    run(unifier::unifyTriple)
+                is AnyArray ->
+                    run(unifier::unifyArray)
+                is AnyIterable ->
+                    run(unifier::unifyIterable)
+                is Number -> /* move up if visibility changes to non-private */
+                    run(unifier::unifyNumber)
+                else ->
+                    run(unifier::unifyAny) } as N }
+        else ->
+            rejectWithImplementationRestriction() }
 
     private companion object : NumericUnifier
 }
@@ -57,7 +61,7 @@ sealed class BaseNumber : Number() {
     protected open val getOrder: NumberPointer?
         get() = zero_element
 
-    internal open fun invokeOrder() = getOrder?.invoke() ?: zero_instance
+    internal open fun invokeOrder(): Number = getOrder?.invoke() ?: zero_instance
 
     override fun toByte() = invokeOrder().toByte()
     override fun toDouble() = invokeOrder().toDouble()
@@ -68,32 +72,32 @@ sealed class BaseNumber : Number() {
 }
 
 private val zero_element: NumberPointer = 0::toByte
-private val zero_instance = zero_element()
+private val zero_instance: Number = zero_element()
 
 private typealias StringTransformDefaultIdentityType = Int
 
 internal sealed interface NumericUnifier : Unifier {
-    fun <N : Number> unifyNumber(it: N) = it
+    fun <N : Number> unifyNumber(it: N): N = it
 
-    fun unifyAny(it: Any) =
+    fun unifyAny(it: Any): Number =
         unifyNumber(it as Number)
 
-    fun unifyString(it: String) =
+    fun unifyString(it: String): Number? =
         parseString(it)
 
-    fun <S : CharSequence> unifyCharSequence(it: S) =
+    fun <S : CharSequence> unifyCharSequence(it: S): StringTransformDefaultIdentityType =
         transformString<StringTransformDefaultIdentityType, _>(it)
 
-    fun unifyArray(it: AnyArray) =
+    fun unifyArray(it: AnyArray): Number =
         unifyOrRejectOnNull(it, AnyArray::firstOrNull)
 
-    fun unifyIterable(it: AnyIterable) =
+    fun unifyIterable(it: AnyIterable): Number =
         unifyOrRejectOnNull(it, AnyIterable::firstOrNull)
 
-    fun unifyPair(it: AnyPair) =
+    fun unifyPair(it: AnyPair): Number =
         unifyOrRejectOnNull(it, AnyPair::first)
 
-    fun unifyTriple(it: AnyTriple) =
+    fun unifyTriple(it: AnyTriple): Number =
         unifyOrRejectOnNull(it, AnyTriple::first)
 
     private fun parseString(it: String?): Number? = it.run(
@@ -106,20 +110,20 @@ internal sealed interface NumericUnifier : Unifier {
             Float::class -> ::parseToFloat
             else -> ::parseToInt })
 
-    private inline fun <reified N : Number, S : CharSequence> transformString(it: S, convert: (S) -> String? = CharSequence::toString, transform: StringToNumberFunction = ::parseInternal) =
+    private inline fun <reified N : Number, S : CharSequence> transformString(it: S, convert: (S) -> String? = CharSequence::toString, transform: StringToNumberFunction = ::parseInternal): N =
         unifyObject<_, _, _>(it, convert) { transform(it) as Number }
         .asTypeUnsafe<N>()
 
     // performs internal adjustments
-    private fun parseInternal(it: String?) =
+    private fun parseInternal(it: String?): Int? =
         if (StringTransformDefaultIdentityType::class isObject Int::class)
             get(it)
         else rejectWithImplementationRestriction()
 
-    private operator fun get(it: String?) =
+    private operator fun get(it: String?): Int? =
         parseToInt(it)
 
-    private inline fun <I, T : Any> unifyOrRejectOnNull(it: I, block: (I) -> T?, transform: NumberKCallable = ::unifyNumber) =
+    private inline fun <I, T : Any> unifyOrRejectOnNull(it: I, block: (I) -> T?, transform: NumberKCallable = ::unifyNumber): Number =
         transform.call(block(it) ?: reject(it))
 
     @Throws
@@ -136,8 +140,8 @@ internal typealias LongFunction = () -> Long
 internal typealias IntPredicate = (Int) -> Boolean
 internal typealias NumberKCallable = KCallable<Number>
 
-internal fun Any?.asInt() = asType<Int>()
-internal fun Any?.asLong() = asType<Long>()
+internal fun Any?.asInt(): Int? = asType<Int>()
+internal fun Any?.asLong(): Long? = asType<Long>()
 
 const val STAGE_BUILD_RUN_DB = 1001
 const val STAGE_BUILD_SESSION = 1002

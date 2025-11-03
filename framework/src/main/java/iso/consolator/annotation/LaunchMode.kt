@@ -11,4 +11,4 @@ annotation class LaunchMode(
     val start: CoroutineStart = CoroutineStart.DEFAULT,
     val async: Boolean = true)
 
-internal fun filterIsLaunchMode(it: Any) = it.typeIs<LaunchMode, _>()
+internal fun filterIsLaunchMode(it: Any): Boolean = it.typeIs<LaunchMode, _>()

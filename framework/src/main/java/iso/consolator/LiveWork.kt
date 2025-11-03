@@ -20,22 +20,22 @@ internal fun AnyTriple.toLiveWork(async: Boolean? = null): AnyTriple =
         second?.asVarKCallable()!!::call,
         async.isTrue() or isAsynchronous()) })
 
-internal suspend fun AnyTriple.attach(tag: TagType? = null, owner: LifecycleOwner? = null) =
+internal suspend fun AnyTriple.attach(tag: TagType? = null, owner: LifecycleOwner? = null): Int? =
     Sequencer.attach(this, tag)
 
-internal suspend fun AnyTriple.attachOnce(tag: TagType? = null, owner: LifecycleOwner? = null) =
+internal suspend fun AnyTriple.attachOnce(tag: TagType? = null, owner: LifecycleOwner? = null): Int? =
     Sequencer.attachOnce(this, tag)
 
-internal suspend fun AnyTriple.attachAfter(tag: TagType? = null, owner: LifecycleOwner? = null) =
+internal suspend fun AnyTriple.attachAfter(tag: TagType? = null, owner: LifecycleOwner? = null): Int? =
     Sequencer.attachAfter(this, tag)
 
-internal suspend fun AnyTriple.attachBefore(tag: TagType? = null, owner: LifecycleOwner? = null) =
+internal suspend fun AnyTriple.attachBefore(tag: TagType? = null, owner: LifecycleOwner? = null): Int? =
     Sequencer.attachBefore(this, tag)
 
-internal suspend fun AnyTriple.attachOnceAfter(tag: TagType? = null, owner: LifecycleOwner? = null) =
+internal suspend fun AnyTriple.attachOnceAfter(tag: TagType? = null, owner: LifecycleOwner? = null): Int? =
     Sequencer.attachOnceAfter(this, tag)
 
-internal suspend fun AnyTriple.attachOnceBefore(tag: TagType? = null, owner: LifecycleOwner? = null) =
+internal suspend fun AnyTriple.attachOnceBefore(tag: TagType? = null, owner: LifecycleOwner? = null): Int? =
     Sequencer.attachOnceBefore(this, tag)
 
 internal fun AnyTriple.detach() {}
@@ -48,13 +48,13 @@ private inline fun AnyTriple.applyToLiveWork(crossinline statement: LiveWorkPoin
 
 private inline fun AnyTriple.applyToSequence(crossinline statement: LiveWorkFunction): AnyTriple = TODO()
 
-private fun AnyTriple.attachConjunctionToLiveWork(operator: LiveWorkKFunction, target: SequencerStep) =
+private fun AnyTriple.attachConjunctionToLiveWork(operator: LiveWorkKFunction, target: SequencerStep): AnyTriple =
     applyToLiveWork { operator.call(run(AnyTriple::lastMarkedLiveWork), target) }
 
-private fun AnyTriple.attachInterceptionToLiveWork(operator: LiveWorkKFunction, target: LiveWorkFunction) =
+private fun AnyTriple.attachInterceptionToLiveWork(operator: LiveWorkKFunction, target: LiveWorkFunction): AnyTriple =
     applyToSequence { operator.call(run(AnyTriple::lastMarkedLiveWork), target) }
 
-private fun AnyTriple.attachPredictionToLiveWork(operator: LiveWorkKFunction, predicate: LiveWorkPredicate) =
+private fun AnyTriple.attachPredictionToLiveWork(operator: LiveWorkKFunction, predicate: LiveWorkPredicate): AnyTriple =
     applyToLiveWork { operator.call(run(AnyTriple::lastMarkedLiveWork), predicate) }
 
 private fun AnyTriple.lastMarkedLiveWork(): AnyTriple = TODO()
@@ -95,55 +95,55 @@ internal infix fun AnyTriple.onTimeout(action: SequencerStep): AnyTriple = apply
     attachConjunctionToLiveWork(
         AnyTriple::onTimeout, action) }
 
-internal fun <T, R> Pair<LiveData<T>, (T) -> R>.toLiveWork(async: Boolean = false) =
+internal fun <T, R> Pair<LiveData<T>, (T) -> R>.toLiveWork(async: Boolean = false): LiveWork =
     LiveWork(
         { first.asType<LiveStep>() }.applyKeptOnce(),
         second.asType(),
         async)
 
-internal fun <T, R> capture(context: CoroutineContext, step: suspend LiveDataScope<T>.() -> Unit, capture: (T) -> R) =
+internal fun <T, R> capture(context: CoroutineContext, step: suspend LiveDataScope<T>.() -> Unit, capture: (T) -> R): Pair<LiveData<T>, (T) -> R> =
     liveData(context, block = step) to capture
 
 internal fun <T, R> Pair<LiveData<T>, (T) -> R>.observe(owner: LifecycleOwner, observer: Observer<T> = run(::disposerOf)): Observer<T> {
     first.observe(owner, observer)
     return observer }
 
-internal fun <T, R> Pair<LiveData<T>, (T) -> R>.dispose(owner: LifecycleOwner, disposer: Observer<T> = run(owner::disposerOf)) =
+internal fun <T, R> Pair<LiveData<T>, (T) -> R>.dispose(owner: LifecycleOwner, disposer: Observer<T> = run(owner::disposerOf)): Observer<T> =
     observe(owner, disposer)
 
 internal fun <T, R> Pair<LiveData<T>, (T) -> R>.observe(observer: Observer<T> = run(::disposerOf)): Observer<T> {
     first.observeForever(observer)
     return observer }
 
-internal fun <T, R> Pair<LiveData<T>, (T) -> R>.observe(owner: LifecycleOwner, observer: (Pair<LiveData<T>, (T) -> R>) -> Observer<T> = ::disposerOf) =
+internal fun <T, R> Pair<LiveData<T>, (T) -> R>.observe(owner: LifecycleOwner, observer: (Pair<LiveData<T>, (T) -> R>) -> Observer<T> = ::disposerOf): Observer<T> =
     observe(owner, observer(this))
 
-internal fun <T, R> Pair<LiveData<T>, (T) -> R>.observe(observer: (Pair<LiveData<T>, (T) -> R>) -> Observer<T> = ::disposerOf) =
+internal fun <T, R> Pair<LiveData<T>, (T) -> R>.observe(observer: (Pair<LiveData<T>, (T) -> R>) -> Observer<T> = ::disposerOf): Observer<T> =
     observe(observer(this))
 
-internal fun <T, R> Pair<LiveData<T>, (T) -> R>.removeObserver(observer: Observer<T>) =
+internal fun <T, R> Pair<LiveData<T>, (T) -> R>.removeObserver(observer: Observer<T>): Unit =
     first.removeObserver(observer)
 
-internal fun <T, R> Pair<LiveData<T>, (T) -> R>.removeObservers(owner: LifecycleOwner) =
+internal fun <T, R> Pair<LiveData<T>, (T) -> R>.removeObservers(owner: LifecycleOwner): Unit =
     first.removeObservers(owner)
 
-internal fun <T, R> observerOf(liveStep: Pair<LiveData<T>, (T) -> R>) =
+internal fun <T, R> observerOf(liveStep: Pair<LiveData<T>, (T) -> R>): Observer<T> =
     Observer<T> { liveStep.second(it) }
 
-private fun <T, R> disposerOf(liveStep: Pair<LiveData<T>, (T) -> R>) =
+private fun <T, R> disposerOf(liveStep: Pair<LiveData<T>, (T) -> R>): Observer<T> =
     object : Observer<T> {
         override fun onChanged(value: T) {
             val (step, capture) = liveStep
             run(step::removeObserver)
             capture(value) } }
 
-private fun <T, R> LifecycleOwner.disposerOf(liveStep: Pair<LiveData<T>, (T) -> R>) =
+private fun <T, R> LifecycleOwner.disposerOf(liveStep: Pair<LiveData<T>, (T) -> R>): Observer<T> =
     Observer<T> { value ->
         val (step, capture) = liveStep
         run(step::removeObservers)
         capture(value) }
 
-internal fun AnyTriple.isAsynchronous() =
+internal fun AnyTriple.isAsynchronous(): Boolean =
     determine(
         { third.asBooleanUnsafe() },
         { third.find { it is Asynchronous }
@@ -162,17 +162,17 @@ internal inline fun <A, B, C, S, R : S> Triple<A, B, C>.capture(): S =
     else
         run(second.asKCallable<R>()::call)
 
-internal val AnyTriple.isLiveCall
+internal val AnyTriple.isLiveCall: Boolean
     get() = first is AnyKCallable
 
-internal val AnyTriple.isLiveWork
+internal val AnyTriple.isLiveWork: Boolean
     get() = first !is AnyKCallable
 
-internal fun Any?.asLiveWork() = asType<LiveWork>()
-internal fun Any?.asLiveCall() = asType<LiveCall>()
+internal fun Any?.asLiveWork(): LiveWork? = asType<LiveWork>()
+internal fun Any?.asLiveCall(): LiveCall? = asType<LiveCall>()
 
-internal fun Any?.asLiveWorkUnsafe() = asTypeUnsafe<LiveWork>()
-internal fun Any?.asLiveCallUnsafe() = asTypeUnsafe<LiveCall>()
+internal fun Any?.asLiveWorkUnsafe(): LiveWork = asTypeUnsafe<LiveWork>()
+internal fun Any?.asLiveCallUnsafe(): LiveCall = asTypeUnsafe<LiveCall>()
 
 private typealias LiveWorkPointer = AnyTriplePointer
 private typealias LiveWorkFunction = AnyTripleFunction

@@ -32,7 +32,7 @@ sealed class Reference<R>(target: KCallable<R>) : KCallable<R> by target {
         protected fun <R> (() -> R).asFunction(): KCallable<R> = ::invoke
     }
 
-    protected open fun requireReference() = ref ?: this
+    protected open fun requireReference(): KCallable<R> = ref ?: this
 
     override fun call(vararg args: Any?) = requireReference().call(*args)
     override fun callBy(args: KParameterMap) = call(*mapToTypedArray(args))

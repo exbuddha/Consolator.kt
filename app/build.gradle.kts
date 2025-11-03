@@ -5,6 +5,7 @@ plugins {
 
 android {
     namespace = "app.consolator"
+
     compileSdk {
         version = release(36)
     }
@@ -19,7 +20,6 @@ android {
 
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName("debug")
             isMinifyEnabled = false
         }
     }
@@ -42,14 +42,16 @@ kotlin {
             progressiveMode = true
             freeCompilerArgs.addAll(
                 "-Xjvm-default=all",
-                "-Xcontext-parameters")
+                "-Xcontext-parameters",
+                "-Xnested-type-aliases",
+                "-Xreturn-value-checker=disable",
+            )
         }
     }
 }
 
 dependencies {
     implementation(project(":context"))
-    implementation(project(":database"))
     implementation(project(":framework"))
 
     implementation(libs.androidx.activity)

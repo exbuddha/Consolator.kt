@@ -20,7 +20,6 @@ import androidx.fragment.app.FragmentTransaction.TRANSIT_FRAGMENT_OPEN
 import net.consolator.BaseActivity.Companion.ABORT_NAV_MAIN_UI
 import net.consolator.BaseActivity.Companion.COMMIT_NAV_MAIN_UI
 import net.consolator.DefaultFragment.ActiveFragment.Companion.synchronizer
-import net.consolator.DefaultFragment.ReactiveFragment
 
 /**
  * Default scheduler fragment handles main view transition.
@@ -28,12 +27,10 @@ import net.consolator.DefaultFragment.ReactiveFragment
 @Coordinate
 @Tag(DEFAULT_FRAGMENT)
 internal open class DefaultFragment : BaseFragment(), LifecycleProvider {
-    /** @suppress
-     *
+    /**
      * Removes and adds the main view.
      */
-    @Suppress("warnings")
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?) =
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View =
         inflater.inflate(contentLayoutId, container, false).also { view ->
         if (container !== null)
             removeThenAddMainView(view, inflater, container, savedInstanceState) }
@@ -49,7 +46,6 @@ internal open class DefaultFragment : BaseFragment(), LifecycleProvider {
                     override fun <T> set(key: Int?, value: T) = TODO()
                 }) }
 
-    /** @suppress */
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         with(savedInstanceState) {
@@ -82,13 +78,13 @@ internal open class DefaultFragment : BaseFragment(), LifecycleProvider {
     /** Empty. */
     private fun cancel() = Unit
 
-    override fun commit(destination: Short) { when (destination) {
+    override fun commit(destination: Short) {
+        when (destination) {
         COMMIT_NAV_MAIN_UI ->
             transit()
         ABORT_NAV_MAIN_UI ->
             cancel() } }
 
-    /** @suppress */
     override fun onDestroy() {
         onDestroyTail?.invoke()
         super.onDestroy()
@@ -111,15 +107,13 @@ internal open class DefaultFragment : BaseFragment(), LifecycleProvider {
                 isCrossObjectProviderEnabled = true
                 isCrossFunctionProviderEnabled = true } } } }
 
-        /** @suppress
-         *
+        /**
          * Adds the main view group.
          */
-        override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?) =
+        override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? =
             super.onCreateView(inflater, container, savedInstanceState)?.also { view ->
             addMainViewGroup(view, inflater, container, savedInstanceState) }
 
-        /** @suppress */
         override fun onDestroyView() {
             synchronizer = null
             super.onDestroyView()
@@ -145,8 +139,8 @@ internal open class DefaultFragment : BaseFragment(), LifecycleProvider {
                                     it.asViewState()
                                     .onValueTypeChanged(State.Resolved::class) {
                                     /* assign next state */
-                                    controller.revise(view, it) }
-                            } } }
+                                    with(view) { controller.revise(it) }
+                            } } } }
                             (controller as ViewModelConnector)
                             .attach(VM) } } }
                     }
@@ -155,7 +149,8 @@ internal open class DefaultFragment : BaseFragment(), LifecycleProvider {
         override fun resumeTrack(scope: CoroutineScope?, context: Any?, job: Job) {
             withCallableScope { callSelfReferring(::resumeTrack) } }
 
-        override fun provide(type: AnyKClass) = when (type) {
+        override fun provide(type: AnyKClass): Any =
+            when (type) {
             ApplicationMigrationManager::class ->
                 object : MigrationManager() {}
             else ->
@@ -163,12 +158,13 @@ internal open class DefaultFragment : BaseFragment(), LifecycleProvider {
                     LifecycleOwner::isForegroundProvider) {
                 defaultActivity.crossProvide(type) } }
 
-        override fun <R> provide(vararg tag: TagType) =
+        override fun <R> provide(vararg tag: TagType): KCallable<R> =
             blockOnTrueOrRestrict(
                 LifecycleOwner::isForegroundProvider) {
             defaultActivity.crossProvide<R>(*tag) }
 
-        private val defaultActivity get() = activity as DefaultActivity
+        private val defaultActivity: DefaultActivity
+            get() = activity as DefaultActivity
     }
 
     /**
@@ -178,7 +174,6 @@ internal open class DefaultFragment : BaseFragment(), LifecycleProvider {
         constructor(main: DefaultFragment? = null) : this(contentLayoutId)
 
         companion object {
-            // include active fragment as context parameter
             /** The state synchronizer. */
             @JvmStatic var synchronizer: StateCoordinator? = null
                 set(value) { field = when (value) {
@@ -221,59 +216,41 @@ internal open class DefaultFragment : BaseFragment(), LifecycleProvider {
             onDetachTail = onDetach
         }
 
-        /** @suppress */
         override fun onAttach(context: Context) {
             ::onAttachInit.relayWork(context) {
-            super.onAttach(context) }
-        }
+            super.onAttach(context) } }
 
-        /** @suppress */
         override fun onStart() {
             ::onStartInit.relayWork {
-            super.onStart() }
-        }
+            super.onStart() } }
 
-        /** @suppress */
         override fun onResume() {
             ::onResumeInit.relayWork {
-            super.onResume() }
-        }
+            super.onResume() } }
 
-        /** @suppress */
         override fun onPause() {
             ::onPauseTail.relayWork {
-            super.onPause() }
-        }
+            super.onPause() } }
 
-        /** @suppress */
         override fun onStop() {
             ::onStopTail.relayWork {
-            super.onStop() }
-        }
+            super.onStop() } }
 
-        /** @suppress */
         override fun onSaveInstanceState(outState: Bundle) {
             ::onSaveInstanceStateInit.relayWork(outState) {
-            super.onSaveInstanceState(it) }
-        }
+            super.onSaveInstanceState(it) } }
 
-        /** @suppress */
         override fun onDestroyView() {
             ::onDestroyViewTail.relayWork {
-            super.onDestroyView() }
-        }
+            super.onDestroyView() } }
 
-        /** @suppress */
         override fun onDestroy() {
             onDestroyTail?.invoke()
-            super.onDestroy()
-        }
+            super.onDestroy() }
 
-        /** @suppress */
         override fun onDetach() {
             onDetachTail?.invoke()
-            super.onDetach()
-        }
+            super.onDetach() }
 
         private var onAttachInit: ContextWork? = null
         private var onStartInit: FragmentWork? = null
@@ -285,31 +262,31 @@ internal open class DefaultFragment : BaseFragment(), LifecycleProvider {
         private var onDestroyTail: Work? = null
         private var onDetachTail: Work? = null
 
-        private fun <R : S, S> KMutableProperty<out (ReactiveFragment.() -> R)?>.relayWork(`super`: ReactiveFragment.() -> S) =
+        private fun <R : S, S> KMutableProperty<out (ReactiveFragment.() -> R)?>.relayWork(`super`: ReactiveFragment.() -> S): S =
             with(this@ReactiveFragment) {
             getInstance()?.invoke(this)
             `super`().also {
             expire() } }
 
-        private fun <T, R : S, S> KMutableProperty<out (ReactiveFragment.(T) -> R)?>.relayWork(value: T, `super`: ReactiveFragment.(T) -> S) =
+        private fun <T, R : S, S> KMutableProperty<out (ReactiveFragment.(T) -> R)?>.relayWork(value: T, `super`: ReactiveFragment.(T) -> S): S =
             with(this@ReactiveFragment) {
             getInstance()?.invoke(this, value)
             `super`(value).also {
             expire() } }
 
-        private fun AnyKMutableProperty.expire() = setter.call(null)
+        private fun AnyKMutableProperty.expire(): Unit = setter.call(null)
     }
 
-    /** @suppress */
     protected abstract inner class MigrationManager : SchedulerFragment.MigrationManager()
 
-    override var isCrossObjectProviderEnabled = true
+    override var isCrossObjectProviderEnabled: Boolean = true
         get() = isForegroundProvider and field
 
-    override var isCrossFunctionProviderEnabled = true
+    override var isCrossFunctionProviderEnabled: Boolean = true
         get() = isForegroundProvider and field
 
-    override fun provide(type: AnyKClass) = when (type) {
+    override fun provide(type: AnyKClass): Any =
+        when (type) {
         TransitionManager::class ->
             this
         ApplicationMigrationManager::class ->
@@ -317,12 +294,12 @@ internal open class DefaultFragment : BaseFragment(), LifecycleProvider {
         else ->
             crossProvide(type) }
 
-    override fun <R> provide(vararg tag: TagType) =
-        crossProvide<R>(*tag)
+    override fun <R> provide(vararg tag: TagType): KCallable<R> =
+        crossProvide(*tag)
+
+    private typealias BundleWork = ReactiveFragment.(Bundle) -> Unit
+    private typealias ContextWork = ReactiveFragment.(Context) -> Unit
+    private typealias FragmentWork = ReactiveFragment.() -> Unit
 }
 
 private typealias DefaultViewGroup = MainViewGroup
-
-private typealias BundleWork = ReactiveFragment.(Bundle) -> Unit
-private typealias ContextWork = ReactiveFragment.(Context) -> Unit
-private typealias FragmentWork = ReactiveFragment.() -> Unit

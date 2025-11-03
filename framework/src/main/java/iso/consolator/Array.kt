@@ -3,22 +3,37 @@
 
 package iso.consolator
 
-internal fun <T> List<T>.second() = get(1)
+internal fun <T> Array<T>.sliceArray(startIndex: Int): Array<T> =
+    sliceArrayUntil(startIndex, size)
 
-internal inline fun <T, reified R> Array<out T>.mapToTypedArray(transform: (T) -> R) =
+internal fun <T> Array<T>.sliceArrayTo(endIndex: Int): Array<T> =
+    sliceArray(0..endIndex)
+
+internal fun <T> Array<T>.sliceArrayUntil(endIndex: Int): Array<T> =
+    sliceArray(0 until endIndex)
+
+internal fun <T> Array<T>.sliceArrayTo(startIndex: Int, endIndex: Int): Array<T> =
+    sliceArray(startIndex..endIndex)
+
+internal fun <T> Array<T>.sliceArrayUntil(startIndex: Int, endIndex: Int): Array<T> =
+    sliceArray(startIndex until endIndex)
+
+internal fun <T> List<T>.second(): T = get(1)
+
+internal inline fun <T, reified R> Array<out T>.mapToTypedArray(transform: (T) -> R): Array<R> =
     map(transform).toTypedArray()
 
-internal fun <T> Array<out T>.second() = get(1)
+internal fun <T> Array<out T>.second(): T = get(1)
 
-internal fun <T> Array<out T>.secondOrNull() =
+internal fun <T> Array<out T>.secondOrNull(): T? =
     resultWhen({ size > 1 }, Array<out T>::second)
 
-internal fun <T> Array<out T>.third() = get(2)
+internal fun <T> Array<out T>.third(): T = get(2)
 
-internal fun <T> Array<out T>.thirdOrNull() =
+internal fun <T> Array<out T>.thirdOrNull(): T? =
     resultWhen({ size > 2 }, Array<out T>::third)
 
-internal fun <T> Array<out T>.nthOrNull(n: Int) =
+internal fun <T> Array<out T>.nthOrNull(n: Int): T? =
     resultWhen({ n in indices }) { get(n) }
 
 internal fun <R> VarArray.with(function: (VarArray) -> R): () -> R = {
@@ -42,8 +57,8 @@ internal typealias AnyTriplePredicate = (AnyTriple) -> Boolean
 
 internal typealias AnyTriplePointer = () -> AnyTriple
 
-internal fun Any.asAny() = asTypeUnsafe<Any>()
-internal fun Any?.asAnyArray() = asType<AnyArray>()
+internal fun Any.asAny(): Any = asTypeUnsafe<Any>()
+internal fun Any?.asAnyArray(): AnyArray? = asType<AnyArray>()
 
 internal typealias AnyPair = Pair<*,*>
 internal typealias AnyTriple = Triple<*,*,*>

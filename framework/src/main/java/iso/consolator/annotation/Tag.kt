@@ -10,7 +10,7 @@ annotation class Tag(
     val id: TagType,
     val keep: Boolean = true)
 
-internal fun filterIsTag(it: Any) = it.typeIs<Tag, _>()
+internal fun filterIsTag(it: Any): Boolean = it.typeIs<Tag, _>()
 
 internal const val no_tag = 0
 

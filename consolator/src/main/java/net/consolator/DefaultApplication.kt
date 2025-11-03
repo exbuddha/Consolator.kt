@@ -10,8 +10,7 @@ import kotlinx.coroutines.*
  */
 @Coordinate
 open class DefaultApplication : BaseApplication() {
-    /** @suppress
-     *
+    /**
      * Calls [begin].
      *
      *  @sample onCreate
@@ -48,7 +47,7 @@ open class DefaultApplication : BaseApplication() {
          * @param V the value type.
          * @return the value instance.
          */
-        @JvmStatic fun <V> registerValue(value: V, target: KProperty<V>) =
+        @JvmStatic fun <V> registerValue(value: V, target: KProperty<V>): Value<V> =
             Value(value).setTarget(target)
 
         /**
@@ -57,7 +56,7 @@ open class DefaultApplication : BaseApplication() {
          * @param V the value type.
          * @return the value instance.
          */
-        @JvmStatic fun <V> registerValueByTag(value: V, tag: TagType) =
+        @JvmStatic fun <V> registerValueByTag(value: V, tag: TagType): Value<V> =
             Value(value).setTag(tag)
     }
 }

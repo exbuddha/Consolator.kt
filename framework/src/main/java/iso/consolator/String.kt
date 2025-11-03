@@ -3,21 +3,21 @@
 
 package iso.consolator
 
-internal fun Any.asStringCounted(n: Number) = "$this#$n"
+internal fun Any.asStringCounted(n: Number): String = "$this#$n"
 
-internal fun parseToInt(it: String?) = it?.toInt()
+internal fun parseToInt(it: String?): Int? = it?.toInt()
 
-internal fun parseToLong(it: String?) = it?.toLong()
+internal fun parseToLong(it: String?): Long? = it?.toLong()
 
-internal fun parseToShort(it: String?) = it?.toShort()
+internal fun parseToShort(it: String?): Short? = it?.toShort()
 
-internal fun parseToByte(it: String?) = it?.toByte()
+internal fun parseToByte(it: String?): Byte? = it?.toByte()
 
-internal fun parseToDouble(it: String?) = it?.toDouble()
+internal fun parseToDouble(it: String?): Double? = it?.toDouble()
 
-internal fun parseToFloat(it: String?) = it?.toFloat()
+internal fun parseToFloat(it: String?): Float? = it?.toFloat()
 
-internal fun Any?.asString() = asType<String>()
+internal fun Any?.asString(): String? = asType<String>()
 
 internal typealias StringFunction = () -> String
 internal typealias StringPointer = () -> String?

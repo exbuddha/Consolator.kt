@@ -12,10 +12,10 @@ import iso.consolator.withSchedulerScope
 import iso.consolator.annotation.TagType
 import kotlin.reflect.KCallable
 
-internal val LifecycleOwner.isForegroundProvider
+internal val LifecycleOwner.isForegroundProvider: Boolean
     get() = withSchedulerScope { isForegroundLifecycleOwner }
 
-internal val LifecycleProvider.isForegroundProvider
+internal val LifecycleProvider.isForegroundProvider: Boolean
     get() = withSchedulerScope { isForegroundLifecycleOwner }
 
 internal sealed interface LifecycleProvider : LifecycleOwner, CrossProvider

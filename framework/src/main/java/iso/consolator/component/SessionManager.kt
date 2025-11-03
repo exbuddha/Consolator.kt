@@ -1,16 +1,17 @@
 package iso.consolator.component
 
 import iso.consolator.SchedulerScope
+import iso.consolator.SchedulerStep
 import iso.consolator.annotation.Referred
 import iso.consolator.reflect.Table
 
 sealed interface SessionManager : Table {
-    val startSessionCreation
+    val startSessionCreation: SchedulerStep
         @Referred get() = SchedulerScope.EMPTY_STEP
 
-    val stageSessionCreation
+    val stageSessionCreation: SchedulerStep
         @Referred get() = SchedulerScope.EMPTY_STEP
 
-    val errorSessionCreation
+    val errorSessionCreation: SchedulerStep
         @Referred get() = SchedulerScope.EMPTY_STEP
 }

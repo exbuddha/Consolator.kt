@@ -2,6 +2,7 @@ package data.consolator.entity
 
 import androidx.room.*
 import data.consolator.*
+import android.annotation.SuppressLint
 
 @Entity(tableName = ExceptionEntity.TABLE, foreignKeys = [
     ForeignKey(
@@ -17,6 +18,7 @@ import data.consolator.*
         parentColumns = [RuntimeDatabase.ID],
         childColumns = [ExceptionEntity.CAUSE],
     )])
+@SuppressLint("ParcelCreator")
 internal data class ExceptionEntity(
     @ColumnInfo(name = TYPE)
     val type: Long,

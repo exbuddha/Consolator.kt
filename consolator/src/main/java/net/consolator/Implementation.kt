@@ -21,7 +21,7 @@ internal var containerViewId = R.id.layout_background
 @LayoutRes
 internal var contentLayoutId = R.layout.background
 
-internal fun DefaultActivity.crossProvide(type: AnyKClass) =
+internal fun DefaultActivity.crossProvide(type: AnyKClass): Any =
     blockOnTrueOrRestrict(
         DefaultActivity::isCrossObjectProviderEnabled) {
     restrictCrossProvider {
@@ -33,7 +33,7 @@ internal fun <R> DefaultActivity.crossProvide(vararg tag: TagType): KCallable<R>
     restrictCrossProvider {
     provide(*tag) } }
 
-internal fun DefaultFragment.crossProvide(type: AnyKClass) =
+internal fun DefaultFragment.crossProvide(type: AnyKClass): Any =
     blockOnTrueOrRestrict(
         DefaultFragment::isCrossObjectProviderEnabled) {
     restrictCrossProvider {
@@ -45,31 +45,31 @@ internal fun <R> DefaultFragment.crossProvide(vararg tag: TagType): KCallable<R>
     restrictCrossProvider {
     provide(*tag) } }
 
-internal inline fun <R> DefaultActivity.restrictCrossProvider(crossinline block: LifecycleProvider.() -> R) =
+internal inline fun <R> DefaultActivity.restrictCrossProvider(crossinline block: LifecycleProvider.() -> R): R =
     restrictIn<DefaultFragment, _>(block)
 
-internal inline fun <R> DefaultFragment.restrictCrossProvider(crossinline block: LifecycleProvider.() -> R) =
+internal inline fun <R> DefaultFragment.restrictCrossProvider(crossinline block: LifecycleProvider.() -> R): R =
     restrictIn<DefaultActivity, _>(block)
 
-internal inline fun <reified T : LifecycleProvider, R> BaseActivity.restrictIn(crossinline block: T.() -> R) =
+internal inline fun <reified T : LifecycleProvider, R> BaseActivity.restrictIn(crossinline block: T.() -> R): R =
     restrictIn<_, T, R>(fragment, block)
 
-internal inline fun <reified S : T, reified T : LifecycleProvider, R> BaseActivity.restrictOut(crossinline block: T.() -> R) =
+internal inline fun <reified S : T, reified T : LifecycleProvider, R> BaseActivity.restrictOut(crossinline block: T.() -> R): R =
     restrictOut<_, S, T, R>(fragment, block)
 
-internal inline fun <reified T : LifecycleProvider, R> BaseFragment.restrictIn(crossinline block: T.() -> R) =
+internal inline fun <reified T : LifecycleProvider, R> BaseFragment.restrictIn(crossinline block: T.() -> R): R =
     restrictIn<_, T, R>(activity, block)
 
-internal inline fun <reified S : T, reified T : LifecycleProvider, R> BaseFragment.restrictOut(crossinline block: T.() -> R) =
+internal inline fun <reified S : T, reified T : LifecycleProvider, R> BaseFragment.restrictOut(crossinline block: T.() -> R): R =
     restrictOut<_, S, T, R>(activity, block)
 
-private inline fun <X, reified T : LifecycleProvider, R> restrictIn(provider: X, block: T.() -> R) =
+private inline fun <X, reified T : LifecycleProvider, R> restrictIn(provider: X, block: T.() -> R): R =
     provider.blockOnTrueOrRestrict({ it.typeIs<T, _>() }) { block(provider as T) }
 
-private inline fun <X, reified S : T, reified T : LifecycleProvider, R> restrictOut(provider: X, block: T.() -> R) =
+private inline fun <X, reified S : T, reified T : LifecycleProvider, R> restrictOut(provider: X, block: T.() -> R): R =
     provider.blockOnTrueOrRestrict({ it.typeIsNot<S, _>() }) { block(provider as T) }
 
-internal inline fun <T, R> T.blockOnTrueOrRestrict(predicate: (T) -> Boolean, block: T.() -> R) =
+internal inline fun <T, R> T.blockOnTrueOrRestrict(predicate: (T) -> Boolean, block: T.() -> R): R =
     if (run(predicate)) block()
     else rejectWithImplementationRestriction()
 

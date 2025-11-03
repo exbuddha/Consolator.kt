@@ -42,10 +42,10 @@ suspend fun buildNewSession(startTime: Long) {
     session = getSession(
         newSession(startTime)) } }
 
-fun <D : RoomDatabase> buildDatabase(context: Context, cls: KClass<D>, name: String? = cls.lastAnnotatedFilename()) =
+fun <D : RoomDatabase> buildDatabase(context: Context, cls: KClass<D>, name: String? = cls.lastAnnotatedFilename()): D =
     with(cls) { buildDatabase(context, java, name) }
 
-private fun <D : RoomDatabase> buildDatabase(context: Context, cls: Class<D>, name: String?) =
+private fun <D : RoomDatabase> buildDatabase(context: Context, cls: Class<D>, name: String?): D =
     Room.databaseBuilder(context, cls, name).build()
 
 /** Runtime database timestamp format. */
@@ -53,10 +53,10 @@ var dateTimeFormat: DateFormat? = null
     get() = field ?: SimpleDateFormat(DATE_FORMAT, Locale.US)
         .also { field = it }
 
-internal fun String.toLocalTime() =
+internal fun String.toLocalTime(): Long? =
     run(dateTimeFormat!!::parse)?.time
 
-internal fun Long.toLocalTimestamp() =
+internal fun Long.toLocalTimestamp(): String =
     dateTimeFormat!!.format(run(::Date))
 
 private var dbTimeDiff: Long? = null
@@ -65,12 +65,12 @@ private var dbTimeDiff: Long? = null
         ?.also { field = it }
 
 /** can only be applied to db timestamps. */
-private fun String.toCurrentLocalTime() = toLocalTime()!!.minus(dbTimeDiff!!)
+private fun String.toCurrentLocalTime(): Long = toLocalTime()!!.minus(dbTimeDiff!!)
 
 /** can only be applied to localized db times. */
-private fun Long.toCurrentDatabaseTime() = plus(dbTimeDiff!!)
+private fun Long.toCurrentDatabaseTime(): Long = plus(dbTimeDiff!!)
 
-internal fun <R> KCallable<R>.receiveInDataModule(value: R) = value
+internal fun <R> KCallable<R>.receiveInDataModule(value: R): R = value
 
 fun clearObjects() {
     dateTimeFormat = null
@@ -82,13 +82,13 @@ fun clearObjects() {
 internal annotation class File(
     val name: String)
 
-internal fun <T : Any> KClass<out T>.annotatedFiles() =
+internal fun <T : Any> KClass<out T>.annotatedFiles(): List<File> =
     annotations.filterIsInstance<File>()
 
-internal fun <T : Any> KClass<out T>.lastAnnotatedFile() =
+internal fun <T : Any> KClass<out T>.lastAnnotatedFile(): File =
     annotations.last { it is File } as File
 
-internal fun <T : Any> KClass<out T>.lastAnnotatedFilename() =
+internal fun <T : Any> KClass<out T>.lastAnnotatedFilename(): String =
     lastAnnotatedFile().name
 
 private const val DATE_FORMAT = "yyyy-MM-dd HH:mm:ss"

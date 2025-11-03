@@ -16,7 +16,7 @@ internal enum class Granularity { Maximal, Blocked, Linear, Coarse, Hard, Soft, 
 
 internal sealed interface Unifier
 
-internal inline fun <T, S, reified R : Any> Unifier.unifyObject(obj: T, convert: (T) -> S, transform: (S) -> R) =
+internal inline fun <T, S, reified R : Any> Unifier.unifyObject(obj: T, convert: (T) -> S, transform: (S) -> R): R =
     transform(convert(obj))
 
 internal inline fun <T, S, reified R : Any> Unifier.unifyTypeObject(obj: T, convert: (T) -> S?, transform: (S) -> R?): R? =
@@ -32,14 +32,14 @@ internal annotation class Converted
 @Target(PROPERTY)
 internal annotation class Transformed
 
-internal inline fun <reified T : Any> KClass<out T>.asConvertedNull() = Unit.nullType<T>()
+internal inline fun <reified T : Any> KClass<out T>.asConvertedNull(): T? = Unit.nullType<T>()
 
-internal inline fun <reified T : Any> KClass<out T>.asTransformedNull() = Unit.nullType<T>()
+internal inline fun <reified T : Any> KClass<out T>.asTransformedNull(): T? = Unit.nullType<T>()
 
-internal inline fun <reified T : Any> Unit.nullType(cls: KClass<out T> = T::class) = null.asType<T>()
+internal inline fun <reified T : Any> Unit.nullType(cls: KClass<out T> = T::class): T? = null.asType<T>()
 
 @Suppress("UNCHECKED_CAST")
-internal fun <R> Unit.type() = this as R
+internal fun <R> Unit.type(): R = this as R
 
 internal typealias UnitKCallable = KCallable<Unit>
 internal typealias UnitKFunction = KFunction<Unit>

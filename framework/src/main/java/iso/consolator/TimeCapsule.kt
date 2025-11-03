@@ -20,7 +20,7 @@ internal sealed interface TimeCapsule {
         abstract var attempts: Int?
 
         internal companion object Table {
-            @JvmStatic operator fun invoke() = object : Record() {
+            @JvmStatic operator fun invoke(): Record = object : Record() {
                 override var uptime: Time? = null
                 override var downtime: Time? = null
 
@@ -34,26 +34,26 @@ internal sealed interface TimeCapsule {
                 override fun getEstimatedDelayToUpTime(): Time = TODO()
                 override fun getEstimatedDelayToDownTime(): Time = TODO()
 
-                override fun asRecord() = this
+                override fun asRecord(): Record = this
             }
         }
 
         // include a contextual function with time capsule as context parameter
-        fun TimeCapsule.toDelayTimeRecord(defaultLast: Time = minTimeValue) = object : DelayTimeCapsule.Record() {
+        fun TimeCapsule.toDelayTimeRecord(defaultLast: Time = minTimeValue): DelayTimeCapsule.Record = object : DelayTimeCapsule.Record() {
             override val uptime: Time? = null
             override var downtime: Time = 0L
 
             override var first: Time? = null
-            override var last = asRecord()?.last ?: defaultLast
+            override var last: Time = asRecord()?.last ?: defaultLast
 
             override var dt: Time = 0L
 
-            override var attempts = asRecord()?.attempts
+            override var attempts: Int? = asRecord()?.attempts
 
             override fun getEstimatedDelayToUpTime(): Time = TODO()
             override fun getEstimatedDelayToDownTime(): Time = TODO()
 
-            override fun asRecord() = this@toDelayTimeRecord as? Record // memory leak!
+            override fun asRecord(): Record? = this@toDelayTimeRecord as? Record // potential memory leak!
         }
     }
 
@@ -70,8 +70,8 @@ internal sealed interface DelayTimeCapsule : TimeCapsule {
         abstract override var first: Time?
         abstract override var last: Time
 
-        override fun toTimeInterval() = ::last.toPointer() to ::dt.toPointer()
-        override fun toTimePeriod() = Triple(::last.toPointer(), ::dt.toPointer(), ::downtime.toPointer())
+        override fun toTimeInterval(): TimeInterval = ::last.toPointer() to ::dt.toPointer()
+        override fun toTimePeriod(): TimePeriod = Triple(::last.toPointer(), ::dt.toPointer(), ::downtime.toPointer())
     }
 
     fun toTimeInterval(): TimeInterval
@@ -89,42 +89,43 @@ internal sealed interface DelayTimeCapsule : TimeCapsule {
         override fun getEstimatedDelayToUpTime() = no_delay
         override fun getEstimatedDelayToDownTime() = no_delay
 
-        override fun asRecord() = this
+        override fun asRecord(): TimeCapsule.Record = this
     }
 }
 
-internal fun TimePeriod.hasTimePeriodElapsed() =
+internal fun TimePeriod.hasTimePeriodElapsed(): Boolean =
     hasTimePeriodElapsed(first(), second(), third())
 
-internal fun TimePeriod.getDelayTime() =
+internal fun TimePeriod.getDelayTime(): Time =
     getDelayTime(first(), second(), third())
 
-internal fun TimeInterval.hasTimeIntervalElapsed() =
+internal fun TimeInterval.hasTimeIntervalElapsed(): Boolean =
     hasTimeIntervalElapsed(first(), second())
 
-internal fun TimeInterval.getDelayTime() =
+internal fun TimeInterval.getDelayTime(): Time =
     getDelayTime(first(), second())
 
-internal fun hasTimePeriodElapsed(last: Time, interval: Time, downtime: Time) =
+internal fun hasTimePeriodElapsed(last: Time, interval: Time, downtime: Time): Boolean =
     (last == 0L) or getDelayTime(last, interval, downtime).isDelayTimeElapsed
 
-internal fun getDelayTime(last: Time, interval: Time, downtime: Time) =
+internal fun getDelayTime(last: Time, interval: Time, downtime: Time): Time =
     now().let { now ->
     now.adjustedBy(last, interval).run {
         val endtime = plus(now)
         runWhen({ endtime > downtime }) { return endtime - downtime } } }
 
 // include a contextual function with last time as parameter
-internal fun hasTimeIntervalElapsed(last: Time, interval: Time) =
+internal fun hasTimeIntervalElapsed(last: Time, interval: Time): Boolean =
     (last == 0L) or getDelayTime(last, interval).isDelayTimeElapsed
 
 // include a contextual function with scheduler scope as parameter type
 // to resolve significant overflows by callback or issuance
-internal fun getDelayTime(last: Time, interval: Time) =
+internal fun getDelayTime(last: Time, interval: Time): Time =
     now().adjustedBy(last, interval) // catch overflows
     .runWhen({ it > interval }) { return interval }
 
-private fun Time.adjustedBy(last: Time, interval: Time) = adjust(last).plus(interval)
+private fun Time.adjustedBy(last: Time, interval: Time): Time =
+    adjust(last).plus(interval)
 
 /**
  * The minimum delay time used for resolving scheduler tasks when view is active.

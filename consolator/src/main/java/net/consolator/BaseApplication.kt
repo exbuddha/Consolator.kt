@@ -3,20 +3,16 @@ package net.consolator
 import android.content.*
 import ctx.consolator.*
 import iso.consolator.*
+import kotlin.reflect.*
 import iso.consolator.annotation.Key
 import iso.consolator.annotation.Tag
-import iso.consolator.component.SchedulerApplication
+import app.consolator.ProviderApplication
 
 /**
  * Adds support to scheduler application for starting the service and editing the shared preferences.
  */
-sealed class BaseApplication : SchedulerApplication(), MainUncaughtExceptionHandler {
-    init {
-        disableLogger()
-        apply(::touchContext) }
-
-    /** @suppress
-     *
+sealed class BaseApplication : ProviderApplication(), MainUncaughtExceptionHandler {
+    /**
      * Starts the base service.
      *
      * Service will be started only if it is enabled by scheduler application.
@@ -38,32 +34,32 @@ sealed class BaseApplication : SchedulerApplication(), MainUncaughtExceptionHand
         putException(ex) } }
 
     @Key(-1)
-    final override fun getLastUncaughtExceptionType(depth: Int) =
+    final override fun getLastUncaughtExceptionType(depth: Int): KClass<*>? =
         withUncaughtSharedPrefs { trySafelyForResult {
-        SchedulerScope.findClass(getCountedStringOrNull(EX_TYPE, depth) ?: return null) } }
+        findClass(getCountedStringOrNull(EX_TYPE, depth) ?: return null) } }
 
     @Key(-2)
-    final override fun getLastUncaughtExceptionMessage(depth: Int) =
+    final override fun getLastUncaughtExceptionMessage(depth: Int): String? =
         withUncaughtSharedPrefs {
         getCountedStringOrNull(EX_MSG, depth) }
 
     @Key(-3)
-    final override fun getLastUncaughtExceptionTime() =
+    final override fun getLastUncaughtExceptionTime(): Long? =
         withUncaughtSharedPrefs {
         getUncountedOrNull(EX_TIME, ::getLong, 0L) }
 
     @Key(-4)
-    final override fun getLastUncaughtExceptionContextUid() =
+    final override fun getLastUncaughtExceptionContextUid(): Long? =
         withUncaughtSharedPrefs {
         getUncountedOrNull(EX_CTX_TIME, ::getLong, 0L) }
 
     @Key(-5)
-    final override fun getLastUncaughtExceptionWasMainThread() =
+    final override fun getLastUncaughtExceptionWasMainThread(): Boolean? =
         withUncaughtSharedPrefs {
         getUncountedOrNull(EX_THREAD, ::getBoolean, false) }
 
     /** Shared preferences for the uncaught exception. */
-    private val uncaughtSharedPrefs
+    private val uncaughtSharedPrefs: SharedPreferences
         get() = getSharedPreferences(UNCAUGHT_EX, MODE_PRIVATE)
 
     /**
@@ -74,7 +70,7 @@ sealed class BaseApplication : SchedulerApplication(), MainUncaughtExceptionHand
      * @param ex the exception.
      * @param depth the number of inner causes to write.
      */
-    private fun SharedPreferences.Editor.putException(ex: Throwable, depth: Int = 0) =
+    private fun SharedPreferences.Editor.putException(ex: Throwable, depth: Int = 0): Unit =
         putIteration(ex,
             map = EX_KVMAP,
             next = Throwable::cause,
@@ -86,17 +82,17 @@ sealed class BaseApplication : SchedulerApplication(), MainUncaughtExceptionHand
         const val ACTION_MIGRATE_APP: Short = 1
 
         /** KV map key in shared preferences for exception type. */
-        private const val EX_TYPE = "$EXCEPTION"
+        private const val EX_TYPE = "a"
         /** KV map key in shared preferences for exception message. */
-        private const val EX_MSG = "$EXCEPTION_MESSAGE"
+        private const val EX_MSG = "c"
         /** KV map key in shared preferences for exception time. */
-        private const val EX_TIME = "$NOW"
+        private const val EX_TIME = "d"
         /** KV map key in shared preferences for exception context time. (start time) */
-        private const val EX_CTX_TIME = "$START"
+        private const val EX_CTX_TIME = "e"
         /** KV map key in shared preferences for exception thread state. (`true` if it had occurred on main thread) */
-        private const val EX_THREAD = "$MAIN"
+        private const val EX_THREAD = "f"
         /** Shared preferences name for uncaught exception. */
-        private const val UNCAUGHT_EX = "$UNCAUGHT"
+        private const val UNCAUGHT_EX = "b"
 
         /** Exception KV map. */
         private val EX_KVMAP: SharedPrefsExceptionKVMap = arrayOf(
@@ -105,10 +101,10 @@ sealed class BaseApplication : SchedulerApplication(), MainUncaughtExceptionHand
         )
 
         /** Edits shared preferences for the uncaught exception. */
-        private inline fun BaseApplication.editUncaughtSharedPrefs(block: SharedPreferences.Editor.() -> Unit) =
+        private inline fun BaseApplication.editUncaughtSharedPrefs(block: SharedPreferences.Editor.() -> Unit): Unit =
             with(uncaughtSharedPrefs.edit(), block)
 
-        private inline fun <R> BaseApplication.withUncaughtSharedPrefs(block: SharedPreferences.() -> R) =
+        private inline fun <R> BaseApplication.withUncaughtSharedPrefs(block: SharedPreferences.() -> R): R =
             with(uncaughtSharedPrefs, block)
     }
 }

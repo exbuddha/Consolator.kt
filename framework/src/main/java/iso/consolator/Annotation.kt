@@ -7,25 +7,25 @@ import iso.consolator.annotation.TagType
 import kotlin.reflect.KClass
 import kotlin.reflect.full.hasAnnotation
 
-internal inline fun <reified T : Annotation> Any.hasAnnotationType() =
+internal inline fun <reified T : Annotation> Any.hasAnnotationType(): Boolean =
     asReference().hasAnnotation<T>()
 
-internal inline fun <reified T : Annotation> Any.hasNoAnnotationType() =
+internal inline fun <reified T : Annotation> Any.hasNoAnnotationType(): Boolean =
     hasAnnotationType<T>().not()
 
-internal inline fun <reified T : Annotation> Any?.hasNullableAnnotationType() =
+internal inline fun <reified T : Annotation> Any?.hasNullableAnnotationType(): Boolean =
     asReference().hasAnnotation<T>()
 
-internal inline fun <reified T : Annotation> Any?.hasNoNullableAnnotationType() =
+internal inline fun <reified T : Annotation> Any?.hasNoNullableAnnotationType(): Boolean =
     hasNullableAnnotationType<T>().not()
 
-internal inline fun <reified T : Annotation, R, S : R> R.whenHasAnnotation(block: R.() -> S) =
+internal inline fun <reified T : Annotation, R, S : R> R.whenHasAnnotation(block: R.() -> S): R =
     runWhen({ this?.hasAnnotationType<T>().isTrue() }, block)
 
-internal inline fun <reified T : Annotation, R, S : R> R.whenHasNoAnnotation(block: R.() -> S) =
+internal inline fun <reified T : Annotation, R, S : R> R.whenHasNoAnnotation(block: R.() -> S): R =
     runWhen({ this?.hasAnnotationType<T>().isFalse() }, block)
 
-internal fun Any?.asAnnotations() = asTypeUnsafe<Annotations>()
+internal fun Any?.asAnnotations(): Annotations = asTypeUnsafe<Annotations>()
 
 internal typealias Annotations = Iterable<Annotation>
 internal typealias AnnotationsMap = Map<AnnotationClass, AnnotationClassMapEntry> // may be simplified to a number given context is well-known

@@ -39,6 +39,7 @@ import kotlin.coroutines.*
 import kotlin.reflect.*
 import kotlin.reflect.full.*
 import kotlinx.coroutines.*
+import kotlinx.coroutines.Runnable
 import kotlinx.coroutines.flow.*
 import androidx.core.content.ContextCompat.RECEIVER_EXPORTED
 import kotlinx.coroutines.Dispatchers.Default
@@ -54,7 +55,7 @@ interface BaseServiceScope : ResolverScope, ReferredContext, UniqueContext.Insta
             target.commitSuspend(
                 target,
                 this@invoke,
-                target.tag) // runtime error: tag is null
+                target.tag) // runtime error: tag is null  --  error requires to be re-evaluated after Kotlin 1.9
             } }
         return mode }
 
@@ -89,62 +90,62 @@ interface BaseServiceScope : ResolverScope, ReferredContext, UniqueContext.Insta
         }
         Sequencer.resumeAsync() }
 
-    private fun Intent?.startClockSafely() = result {
+    private fun Intent?.startClockSafely(): Unit? = result {
         if (hasCategory(START_TIME_KEY))
             Clock.startSafely() }
 
-    private fun Intent?.setStartTime() = result {
+    private fun Intent?.setStartTime(): Time? = result {
         trySafelyForResult {
         getLongExtra(
             START_TIME_KEY,
             foregroundContext.uniqueStartTimeOrNow()) } }
         ?.apply(::uid::set)
 
-    private suspend inline fun <reified D : RoomDatabase> SequencerScope.coordinateBuildDatabase(identifier: Any?, instance: KMutableProperty<out D?>, noinline stage: ContextStep?) =
+    private suspend inline fun <reified D : RoomDatabase> SequencerScope.coordinateBuildDatabase(identifier: Any?, instance: KMutableProperty<out D?>, noinline stage: ContextStep?): D? =
         buildDatabaseOrResetByTag(identifier, instance, stage, synchronize(identifier, stage))
 
-    private suspend inline fun <reified D : RoomDatabase> SequencerScope.buildDatabaseOrResetByTag(identifier: Any?, instance: KMutableProperty<out D?>, noinline stage: ContextStep?, noinline post: AnyStep) =
+    private suspend inline fun <reified D : RoomDatabase> SequencerScope.buildDatabaseOrResetByTag(identifier: Any?, instance: KMutableProperty<out D?>, noinline stage: ContextStep?, noinline post: AnyStep): D? =
         buildDatabaseOrResetByTag(identifier, instance, stage, post, ::whenNotNullOrResetByTag)
 
-    private suspend inline fun <reified D : RoomDatabase> SequencerScope.buildDatabaseOrResetByTag(identifier: Any?, instance: KMutableProperty<out D?>, noinline stage: ContextStep?, noinline post: AnyStep, condition: PropertyBuildCondition) =
+    private suspend inline fun <reified D : RoomDatabase> SequencerScope.buildDatabaseOrResetByTag(identifier: Any?, instance: KMutableProperty<out D?>, noinline stage: ContextStep?, noinline post: AnyStep, condition: PropertyBuildCondition): D? =
         returnTag(identifier)?.let { tag ->
         buildDatabaseOrResetByTag(instance, tag).also {
         condition(instance, tag,
             formAfterMarkingTagsForCtxReform(tag, currentJob(), stage, post)) } }
 
-    private suspend inline fun <reified D : RoomDatabase> SequencerScope.buildDatabaseOrResetByTag(instance: KMutableProperty<out D?>, tag: TagType) =
+    private suspend inline fun <reified D : RoomDatabase> SequencerScope.buildDatabaseOrResetByTag(instance: KMutableProperty<out D?>, tag: TagType): D? =
         ref?.get()?.run {
         determine(instance, tag, ::buildDatabase) }
 
-    private suspend inline fun <reified R> SequencerScope.determine(instance: KMutableProperty<out R?>, tag: TagType, block: KFunction<R>) =
+    private suspend inline fun <reified R> SequencerScope.determine(instance: KMutableProperty<out R?>, tag: TagType, block: KFunction<R>): R? =
         perceiveOrResetByTag(instance, tag, block)
         ?.apply(instance::setInstance)
 
-    private suspend inline fun <reified R> SequencerScope.perceiveOrResetByTag(instance: KMutableProperty<out R?>, tag: TagType, block: KFunction<R>) =
+    private suspend inline fun <reified R> SequencerScope.perceiveOrResetByTag(instance: KMutableProperty<out R?>, tag: TagType, block: KFunction<R>): R? =
         sequencer { trySafelyCanceling {
         resetByTagOnError(tag) {
         commitAsyncAndResetByTag(instance, tag, block::call) } } }
 
-    private suspend inline fun <R> SequencerScope.commitAsyncAndResetByTag(lock: AnyKProperty, tag: TagType, crossinline block: () -> R) =
+    private suspend inline fun <R> SequencerScope.commitAsyncAndResetByTag(lock: AnyKProperty, tag: TagType, crossinline block: () -> R): R? =
         commitAsyncOrResetByTag(lock, tag) { block().also { resetByTag(tag) } }
 
-    private suspend inline fun <R> SequencerScope.commitAsyncOrResetByTag(lock: AnyKProperty, tag: TagType, crossinline block: () -> R) =
+    private suspend inline fun <R> SequencerScope.commitAsyncOrResetByTag(lock: AnyKProperty, tag: TagType, crossinline block: () -> R): R? =
         commitAsyncOrFallback(lock, ::trueWhenNull, block) { resetByTag(tag) }
 
-    private fun SequencerScope.synchronize(identifier: Any?, stage: ContextStep?) =
+    private fun SequencerScope.synchronize(identifier: Any?, stage: ContextStep?): ObjectSuspendFunction =
         formOrIgnore(stage) { form(it) }
 
-    private inline fun SequencerScope.formOrIgnore(noinline stage: ContextStep?, crossinline block: (ContextStep) -> Any) =
+    private inline fun SequencerScope.formOrIgnore(noinline stage: ContextStep?, crossinline block: (ContextStep) -> Any): ObjectSuspendFunction =
         if (stage !== null) { { block(stage) } }
         else EMPTY_STEP.applyIgnoreOnce()
 
-    private fun SequencerScope.form(stage: ContextStep) =
+    private fun SequencerScope.form(stage: ContextStep): Step =
         suspend { change(stage) }
 
-    private fun formAfterMarkingTagsForCtxReform(tag: TagType, job: Job, stage: ContextStep?, form: AnyStep) =
+    private fun formAfterMarkingTagsForCtxReform(tag: TagType, job: Job, stage: ContextStep?, form: AnyStep): AnyStep =
         (form afterInternalSuspended { markTagsForCtxReform(tag, job, stage, form) })!!
 
-    private suspend inline fun whenNotNullOrResetByTag(instance: AnyKProperty, stage: TagType, step: AnyStep) =
+    private suspend inline fun whenNotNullOrResetByTag(instance: AnyKProperty, stage: TagType, step: AnyStep): Any? =
         if (instance.isNotNull())
             step()
         else resetByTag(stage)
@@ -155,7 +156,7 @@ interface BaseServiceScope : ResolverScope, ReferredContext, UniqueContext.Insta
     private inline infix fun <R, S> (suspend () -> R)?.afterInternalSuspended(crossinline prev: suspend () -> S): (suspend () -> R)? =
         afterSuspended(prev)
 
-    override fun commit(step: AnyCoroutineStep) =
+    override fun commit(step: AnyCoroutineStep): Any? =
         step.markTagForSvcCommit().let { step ->
         SchedulerScope.DEFAULT_OPERATOR?.invoke(step)
         ?: attach(step) { launch { step() } } }
@@ -215,9 +216,10 @@ sealed interface SchedulerScope : ResolverScope {
         internal fun Fragment.commitAttach(context: Context) {}
 
         internal fun Fragment.commitStart() {
-            if ((foregroundLifecycleOwner isObject activity) or
-                foregroundLifecycleOwner.typeIs<SchedulerFragment, _>() or
-                foregroundLifecycleOwner.isNullValue())
+            if (with(foregroundLifecycleOwner) {
+                isObject(activity) or
+                typeIs<SchedulerFragment, _>() or
+                isNullValue() })
                 foregroundLifecycleOwner = this }
 
         internal fun Fragment.commitResume() {}
@@ -238,10 +240,10 @@ sealed interface SchedulerScope : ResolverScope {
 
         internal fun Fragment.commitDetach() {}
 
-        @JvmStatic val LifecycleOwner.isForegroundLifecycleOwner
+        @JvmStatic val LifecycleOwner.isForegroundLifecycleOwner: Boolean
             get() = isObject(foregroundLifecycleOwner)
 
-        @JvmStatic fun buildRuntimeDatabase(context: Context) =
+        @JvmStatic fun buildRuntimeDatabase(context: Context): RuntimeDatabase =
             commitBuildDatabase(context, ::runDb)
 
         @Diverging(["$STAGE_BUILD_RUN_DB"])
@@ -270,12 +272,12 @@ sealed interface SchedulerScope : ResolverScope {
             mainUncaughtExceptionHandler.setToFunction(
                 dbUncaughtExceptionHandler::uncaughtException) }
 
-        private val dbUncaughtExceptionHandler = object : MainUncaughtExceptionHandler {
-            @Tag(UNCAUGHT_DB)
-            override fun uncaughtException(thread: Thread, ex: Throwable) {
-                /* record in db safely */
-            }
-        }
+        private val dbUncaughtExceptionHandler: MainUncaughtExceptionHandler =
+            object : MainUncaughtExceptionHandler {
+                @Tag(UNCAUGHT_DB)
+                override fun uncaughtException(thread: Thread, ex: Throwable) {
+                    /* record in db safely */
+                } }
 
         @JvmStatic fun LifecycleOwner.detach(job: Job? = null) {}
 
@@ -297,14 +299,14 @@ sealed interface SchedulerScope : ResolverScope {
             return scope.launch(context, start) { trackedStep() }
                 .applySaveNewElement(step) } }
 
-        internal fun <R> LifecycleOwner.relaunch(instance: JobKProperty, group: FunctionSet?, context: CoroutineContext = SchedulerContext, start: CoroutineStart = CoroutineStart.DEFAULT, step: suspend CoroutineScope.() -> R) =
+        internal fun <R> LifecycleOwner.relaunch(instance: JobKProperty, group: FunctionSet?, context: CoroutineContext = SchedulerContext, start: CoroutineStart = CoroutineStart.DEFAULT, step: suspend CoroutineScope.() -> R): Job =
             relaunch(instance, context, start, step)
             .also { job -> markTagsInGroupForJobRelaunch(instance, step, group, job, this, context, start) }
 
-        private fun <R> LifecycleOwner.relaunch(instance: JobKProperty, context: CoroutineContext, start: CoroutineStart, step: suspend CoroutineScope.() -> R) =
+        private fun <R> LifecycleOwner.relaunch(instance: JobKProperty, context: CoroutineContext, start: CoroutineStart, step: suspend CoroutineScope.() -> R): Job =
             Scheduler.relaunch(instance, context, start, step)
 
-        internal suspend fun delayOrYield(dt: Time = no_delay) = dt.blockOrYield()
+        internal suspend fun delayOrYield(dt: Time = no_delay): Boolean = dt.blockOrYield()
 
         internal suspend inline fun <reified T : CancellationException> delayOrCancel(dt: Time = no_delay, msg: String? = null) {
             runUnlessOrRejectWithException<T, _, _>(msg,
@@ -321,57 +323,64 @@ sealed interface SchedulerScope : ResolverScope {
                 predicate = downtime::isTimedOut,
                 block = { dt.blockOrYield() }) }
 
-        // convert job to context parameter here on and in scheduler step
-        // another context parameter can be used to optimize and restrict to call site functionality
-
-        @JvmStatic infix fun <R> Job?.then(next: suspend SchedulerScope.(Any?, Job) -> R) = result {
+        context(_: LifecycleOwner, _: Job)
+        @JvmStatic infix fun <R> Job?.then(next: suspend SchedulerScope.(Any?, Job) -> R): AnyCoroutineStep? = result {
             attachConjunctionToElement(next) { last, next ->
                 last then next } }
 
-        @JvmStatic infix fun <R> Job?.after(prev: suspend SchedulerScope.(Any?, Job) -> R) = result {
+        context(_: LifecycleOwner, _: Job)
+        @JvmStatic infix fun <R> Job?.after(prev: suspend SchedulerScope.(Any?, Job) -> R): AnyCoroutineStep? = result {
             attachConjunctionToElement(prev) { last, prev ->
                 last after prev } }
 
-        @JvmStatic infix fun Job?.given(predicate: SchedulerPrediction) = result {
+        context(_: LifecycleOwner, _: Job)
+        @JvmStatic infix fun Job?.given(predicate: SchedulerPrediction): AnyCoroutineStep? = result {
             attachPredictionToElement(predicate) { last, predicate ->
                 last given predicate } }
 
-        @JvmStatic infix fun Job?.given(predicate: Predicate) = result {
+        context(_: LifecycleOwner, _: Job)
+        @JvmStatic infix fun Job?.given(predicate: Predicate): AnyCoroutineStep? = result {
             attachPredictionToElement(predicate) { last, predicate ->
                 last given predicate } }
 
-        @JvmStatic infix fun Job?.unless(predicate: SchedulerPrediction) = result {
+        context(_: LifecycleOwner, _: Job)
+        @JvmStatic infix fun Job?.unless(predicate: SchedulerPrediction): AnyCoroutineStep? = result {
             attachPredictionToElement(predicate) { last, predicate ->
                 last unless predicate } }
 
-        @JvmStatic infix fun Job?.unless(predicate: Predicate) = result {
+        context(_: LifecycleOwner, _: Job)
+        @JvmStatic infix fun Job?.unless(predicate: Predicate): AnyCoroutineStep? = result {
             attachPredictionToElement(predicate) { last, predicate ->
                 last unless predicate } }
 
-        @JvmStatic infix fun <R> Job?.otherwise(next: suspend SchedulerScope.(Any?, Job) -> R) = result {
+        context(_: LifecycleOwner, _: Job)
+        @JvmStatic infix fun <R> Job?.otherwise(next: suspend SchedulerScope.(Any?, Job) -> R): AnyCoroutineStep? = result {
             attachConjunctionToElement(next) { last, next ->
                 last otherwise next } }
 
-        @JvmStatic infix fun <R> Job?.onCancel(action: suspend SchedulerScope.(Any?, Job) -> R) = result {
+        context(_: LifecycleOwner, _: Job)
+        @JvmStatic infix fun <R> Job?.onCancel(action: suspend SchedulerScope.(Any?, Job) -> R): AnyCoroutineStep? = result {
             attachConjunctionToElement(action) { last, action ->
                 last onCancel action } }
 
-        @JvmStatic infix fun <R> Job?.onError(action: suspend SchedulerScope.(Any?, Job) -> R) = result {
+        context(_: LifecycleOwner, _: Job)
+        @JvmStatic infix fun <R> Job?.onError(action: suspend SchedulerScope.(Any?, Job) -> R): AnyCoroutineStep? = result {
             attachConjunctionToElement(action) { last, action ->
                 last onError action } }
 
-        @JvmStatic infix fun <R> Job?.onTimeout(action: suspend SchedulerScope.(Any?, Job) -> R) = result {
+        context(_: LifecycleOwner, _: Job)
+        @JvmStatic infix fun <R> Job?.onTimeout(action: suspend SchedulerScope.(Any?, Job) -> R): AnyCoroutineStep? = result {
             attachConjunctionToElement(action) { last, action ->
                 last onTimeout action } }
 
-        @JvmStatic infix fun <R, S> (suspend CoroutineScope.() -> R)?.then(next: suspend SchedulerScope.(Any?, Job) -> S) = letResult { prev ->
+        @JvmStatic infix fun <R, S> (suspend CoroutineScope.() -> R)?.then(next: suspend SchedulerScope.(Any?, Job) -> S): AnyCoroutineStep? = letResult { prev ->
             attachToContext {
                 prev.annotatedOrCurrentScopeReferring(next)
                     .take(prev)
                 next.annotatedOrCurrentScope()
                     .take(next, prev.contextReferring(next), currentJob()) } }
 
-        @JvmStatic infix fun <R, S> (suspend CoroutineScope.() -> R)?.after(prev: suspend SchedulerScope.(Any?, Job) -> S) = letResult { next ->
+        @JvmStatic infix fun <R, S> (suspend CoroutineScope.() -> R)?.after(prev: suspend SchedulerScope.(Any?, Job) -> S): AnyCoroutineStep? = letResult { next ->
             attachToContext {
                 prev.annotatedOrCurrentScopeReferring(next)
                     .take(prev, next.contextReferring(prev), currentJob())
@@ -379,31 +388,31 @@ sealed interface SchedulerScope : ResolverScope {
                     .take(next) } }
 
         // referables can be employed for optimizations in look-ahead strategy
-        @JvmStatic infix fun <R> (suspend CoroutineScope.() -> R)?.given(predicate: SchedulerPrediction) = letResult { cond ->
+        @JvmStatic infix fun <R> (suspend CoroutineScope.() -> R)?.given(predicate: SchedulerPrediction): AnyCoroutineStep? = letResult { cond ->
             attachToContext {
                 if (cond.isCurrentlyTrueGiven(predicate))
                     cond.acceptOnTrue()
                 else cond.rejectOnTrue() } }
 
-        @JvmStatic infix fun <R> (suspend CoroutineScope.() -> R)?.given(predicate: Predicate) = letResult { cond ->
+        @JvmStatic infix fun <R> (suspend CoroutineScope.() -> R)?.given(predicate: Predicate): AnyCoroutineStep? = letResult { cond ->
             attachToContext {
                 if (cond.isCurrentlyTrueGiven(predicate))
                     cond.acceptOnTrue()
                 else cond.rejectOnTrue() } }
 
-        @JvmStatic infix fun <R> (suspend CoroutineScope.() -> R)?.unless(predicate: SchedulerPrediction) = letResult { cond ->
+        @JvmStatic infix fun <R> (suspend CoroutineScope.() -> R)?.unless(predicate: SchedulerPrediction): AnyCoroutineStep? = letResult { cond ->
             attachToContext {
                 if (cond.isCurrentlyFalseGiven(predicate))
                     cond.acceptOnFalse()
                 else cond.rejectOnFalse() } }
 
-        @JvmStatic infix fun <R> (suspend CoroutineScope.() -> R)?.unless(predicate: Predicate) = letResult { cond ->
+        @JvmStatic infix fun <R> (suspend CoroutineScope.() -> R)?.unless(predicate: Predicate): AnyCoroutineStep? = letResult { cond ->
             attachToContext {
                 if (cond.isCurrentlyFalseGiven(predicate))
                     cond.acceptOnFalse()
                 else cond.rejectOnFalse() } }
 
-        @JvmStatic infix fun <R, S> (suspend CoroutineScope.() -> R)?.otherwise(next: suspend SchedulerScope.(Any?, Job) -> S) = letResult { cond ->
+        @JvmStatic infix fun <R, S> (suspend CoroutineScope.() -> R)?.otherwise(next: suspend SchedulerScope.(Any?, Job) -> S): AnyCoroutineStep? = letResult { cond ->
             attachToContext {
                 if (cond.isCurrentlyFalseReferring(next))
                     cond.acceptOnFalseReferring(next)
@@ -415,21 +424,21 @@ sealed interface SchedulerScope : ResolverScope {
 
         @JvmStatic infix fun <R, S> (suspend CoroutineScope.() -> R)?.onTimeout(action: suspend SchedulerScope.(Any?, Job) -> S): AnyCoroutineStep? = TODO()
 
-        @JvmStatic infix fun Job?.thenJob(next: Job) = this
+        @JvmStatic infix fun Job?.thenJob(next: Job): Job? = this
 
-        @JvmStatic infix fun Job?.afterJob(prev: Job) = this
+        @JvmStatic infix fun Job?.afterJob(prev: Job): Job? = this
 
-        @JvmStatic infix fun Job?.givenJob(predicate: Predicate) = this
+        @JvmStatic infix fun Job?.givenJob(predicate: Predicate): Job? = this
 
-        @JvmStatic infix fun Job?.unlessJob(predicate: Predicate) = this
+        @JvmStatic infix fun Job?.unlessJob(predicate: Predicate): Job? = this
 
-        @JvmStatic infix fun Job?.otherwiseJob(next: Job) = this
+        @JvmStatic infix fun Job?.otherwiseJob(next: Job): Job? = this
 
-        @JvmStatic infix fun Job?.onCancelJob(action: Job) = this
+        @JvmStatic infix fun Job?.onCancelJob(action: Job): Job? = this
 
-        @JvmStatic infix fun Job?.onErrorJob(action: Job) = this
+        @JvmStatic infix fun Job?.onErrorJob(action: Job): Job? = this
 
-        @JvmStatic infix fun Job?.onTimeoutJob(action: Job) = this
+        @JvmStatic infix fun Job?.onTimeoutJob(action: Job): Job? = this
 
         @JvmStatic infix fun Job?.commit(step: SchedulerStep): Job? = this
 
@@ -461,53 +470,54 @@ sealed interface SchedulerScope : ResolverScope {
 
         @JvmStatic fun <I : CoroutineScope> I.close(job: Job, exit: ExitWork? = null) {}
 
-        @JvmStatic fun <I : CoroutineScope> I.keepAlive(job: Job) = keepAliveNode(job.node)
+        @JvmStatic fun <I : CoroutineScope> I.keepAlive(job: Job): Boolean = keepAliveNode(job.node)
 
-        @JvmStatic fun <I : CoroutineScope> I.keepAliveOrClose(job: Job) = keepAliveOrCloseNode(job.node)
+        @JvmStatic fun <I : CoroutineScope> I.keepAliveOrClose(job: Job): Boolean = keepAliveOrCloseNode(job.node)
 
         @JvmStatic fun <I : CoroutineScope> I.keepAliveNode(node: SchedulerNode): Boolean = false
 
-        @JvmStatic fun <I : CoroutineScope> I.keepAliveOrCloseNode(node: SchedulerNode) =
+        @JvmStatic fun <I : CoroutineScope> I.keepAliveOrCloseNode(node: SchedulerNode): Boolean =
             keepAliveNode(node) or node.close()
 
         @JvmStatic fun Job.close() {}
 
-        @JvmStatic fun change(stage: ContextStep) =
+        @JvmStatic fun change(stage: ContextStep): ResolverTransactionIdentityType =
             commit { foregroundContext.stage(stage) }
 
-        @JvmStatic fun <R> change(member: KFunction<R>, stage: ContextStep) =
+        @JvmStatic fun <R> change(member: KFunction<R>, stage: ContextStep): ResolverTransactionIdentityType =
             commit { foregroundContext.stage(member to stage) }
 
-        @JvmStatic fun <R> changeLocally(owner: LifecycleOwner, member: KFunction<R>, stage: ContextStep) =
+        @JvmStatic fun <R> changeLocally(owner: LifecycleOwner, member: KFunction<R>, stage: ContextStep): ResolverTransactionIdentityType =
             commit { foregroundContext.stage((owner to member) to stage) }
 
-        @JvmStatic fun <R> changeBroadly(ref: WeakContext, member: KFunction<R>, stage: ContextStep) =
+        @JvmStatic fun <R> changeBroadly(ref: WeakContext, member: KFunction<R>, stage: ContextStep): ResolverTransactionIdentityType =
             commit { foregroundContext.stage((ref to member) to stage) }
 
-        @JvmStatic fun <R> changeGlobally(owner: LifecycleOwner, ref: WeakContext, member: KFunction<R>, stage: ContextStep) =
+        @JvmStatic fun <R> changeGlobally(owner: LifecycleOwner, ref: WeakContext, member: KFunction<R>, stage: ContextStep): ResolverTransactionIdentityType =
             commit { foregroundContext.stage(Triple(owner, ref, member) to stage) }
 
-        // with context parameters, convert to extension functions with implicit receivers from the call site
-        @JvmStatic suspend inline fun <reified T : Resolver, I : CoroutineScope> I.defer(crossinline step: suspend T.() -> Any?) =
+        context(scope: I)
+        @JvmStatic suspend inline fun <reified T : Resolver, I : CoroutineScope> I.defer(crossinline step: suspend T.() -> Any?): Any? =
             step(this@defer as T) /* error! */
 
-        @JvmStatic suspend inline fun <reified T : Resolver, I : CoroutineScope> I.defer(member: AnyKFunction, crossinline step: suspend T.() -> Any?) =
+        context(scope: I)
+        @JvmStatic suspend inline fun <reified T : Resolver, I : CoroutineScope> I.defer(member: AnyKFunction, crossinline step: suspend T.() -> Any?): Any? =
             step(this@defer as T) /* error! */
 
-        @JvmStatic suspend inline fun <reified T : Resolver, I : CoroutineScope> I.defer(receiver: I = this /* convert to context parameter */, member: AnyKFunction, crossinline step: suspend T.() -> Any?) =
+        context(scope: I)
+        @JvmStatic suspend inline fun <reified T : Resolver, I : CoroutineScope> I.defer(receiver: I = scope, member: AnyKFunction, crossinline step: suspend T.() -> Any?): Any? =
             step(this@defer as T) /* error! */
 
-        // convert to contextual function by current job
-        @JvmStatic suspend fun currentContext() =
+        @JvmStatic suspend fun currentContext(): Context =
             currentJob().getInstance(CONTEXT).asWeakContext()?.get()!!
 
-        @JvmStatic suspend inline fun <R> tryCancelingWithContext(crossinline block: suspend Context.() -> R) =
+        @JvmStatic suspend inline fun <R> tryCancelingWithContext(crossinline block: suspend Context.() -> R): R =
             tryCanceling { currentContext().block() }
 
-        @JvmStatic suspend inline fun <R> tryCanceling(crossinline block: suspend () -> R) =
+        @JvmStatic suspend inline fun <R> tryCanceling(crossinline block: suspend () -> R): R =
             tryCanceling(null, block)
 
-        @JvmStatic suspend inline fun <R> tryCanceling(msg: String?, crossinline block: suspend () -> R) =
+        @JvmStatic suspend inline fun <R> tryCanceling(msg: String?, crossinline block: suspend () -> R): R =
             tryCancelingSuspended(msg, block)
 
         @JvmStatic fun Message.send() {}
@@ -586,13 +596,13 @@ sealed interface SchedulerScope : ResolverScope {
         internal infix fun Message.onTimeout(action: Message): Message = apply {
             attachTimeoutConclusionToMessage(action) }
 
-        @JvmStatic val AnyKCallable.isScheduledAhead
+        @JvmStatic val AnyKCallable.isScheduledAhead: Boolean
             get() = hasAnnotationType<Ahead>()
 
-        @JvmStatic val Any.isScheduledAhead
+        @JvmStatic val Any.isScheduledAhead: Boolean
             get() = hasAnnotationType<Ahead>()
 
-        internal fun init(block: UnitKCallable) =
+        internal fun init(block: UnitKCallable): Unit =
             init { block.call() }
 
         internal fun init(block: SchedulerScopeWork) {
@@ -603,12 +613,12 @@ sealed interface SchedulerScope : ResolverScope {
             invoke().asType<Scheduler>()
             ?.observeAsync() }
 
-        internal fun invoke(block: UnitKCallable) = block.call()
+        internal fun invoke(block: UnitKCallable): Unit = block.call()
 
-        internal fun invoke(block: SchedulerScopeWork) = this.block()
+        internal fun invoke(block: SchedulerScopeWork): Unit = this.block()
 
         @Tag(CLK_INIT) @Synchronous(group = Clock::class)
-        internal val initClock = Runnable {
+        internal val initClock: Runnable = Runnable {
             // turn clock until scope is active
             currentThread.log(info, SVC_TAG, "Clock is detected.") }
 
@@ -643,19 +653,20 @@ sealed interface SchedulerScope : ResolverScope {
             if (isSchedulerPreferred)
                 preferClock() }
 
-        internal fun repostByPreference(step: CoroutineStep, post: AnyStepFunction, handle: CoroutineFunction) =
+        internal fun repostByPreference(step: CoroutineStep, post: AnyStepFunction, handle: CoroutineFunction): Unit =
             repostByPreference(
                 { post(step.markTagForSchPost().toStep()) },
                 { handle(step) })
 
-        internal fun repostByPreference(step: Step, post: AnyStepFunction, handle: CoroutineFunction) =
+        internal fun repostByPreference(step: Step, post: AnyStepFunction, handle: CoroutineFunction): Unit =
             repostByPreference(
                 { post(step.markTagForSchPost()) },
                 { handle(step.toCoroutine()) })
 
         internal fun <R> repostByPreference(step: KCallable<R>, post: AnyStepFunction, handle: CoroutineFunction) { step.call() }
 
-        private inline fun repostByPreference(post: Work, handle: Work) = when {
+        private inline fun repostByPreference(post: Work, handle: Work): Unit =
+            when {
             isSchedulerPreferred and
             isSchedulerObserved ->
                 post()
@@ -667,22 +678,23 @@ sealed interface SchedulerScope : ResolverScope {
             else ->
                 currentThread.interrupt() }
 
-        @JvmStatic val Thread.log
+        context(_: ProcessScope)
+        @JvmStatic val Thread.log: LogInvoker
             get() = iso.consolator.log
 
-        @JvmStatic fun isDatabaseCreated() = isRuntimeDbNotNull
+        @JvmStatic fun isDatabaseCreated(): Boolean = isRuntimeDbNotNull
 
-        @JvmStatic fun isSessionCreated() = isSessionNotNull
+        @JvmStatic fun isSessionCreated(): Boolean = isSessionNotNull
 
-        internal val isClockPreferred
+        internal val isClockPreferred: Boolean
             get() = DEFAULT_RESOLVER.typeIs<HandlerScope, _>()
 
-        internal val isSchedulerPreferred
+        internal val isSchedulerPreferred: Boolean
             get() = DEFAULT_RESOLVER.typeIsNot<Scheduler, _>()
 
-        internal var isSchedulerObserved = false
+        internal var isSchedulerObserved: Boolean = false
 
-        internal val isSchedulerNotObserved get() = !isSchedulerObserved
+        internal val isSchedulerNotObserved: Boolean get() = !isSchedulerObserved
 
         private var DEFAULT_RESOLVER: ResolverScope? = null
             set(value) {
@@ -700,23 +712,30 @@ sealed interface SchedulerScope : ResolverScope {
 
         @JvmStatic val EMPTY_STEP: SchedulerStep = { _, _ -> }
 
+        context(_: Implication<T>)
         override fun <T> Any.implicitly(): KCallable<T> = TODO()
 
-        @JvmStatic fun findClass(className: String) = Class.forName(className).kotlin
+        @JvmStatic fun findClass(className: String): AnyKClass = Class.forName(className).kotlin
 
-        @JvmStatic operator fun invoke() = DEFAULT_RESOLVER ?: Scheduler
+        @JvmStatic operator fun invoke(): ResolverScope = DEFAULT_RESOLVER ?: Scheduler
 
         override fun commit(step: AnyCoroutineStep): ResolverTransactionIdentityType =
             with(State) { onValueTypeChanged(Resolved::class) {
                 this@Companion().commit(step) } }
+
+        context(_: CoroutineScope)
+        override fun <T> withLazy(callable: KCallable<T>, block: T.(KCallable<T>) -> Any?): CoroutineScope {
+            // check for known global values, such as ::mainUncaughtExceptionHandler
+            // by active states, such as State[-1]
+            return super.withLazy(callable, block) }
     }
 
-    override fun commit(step: AnyCoroutineStep) =
+    override fun commit(step: AnyCoroutineStep): ResolverTransactionIdentityType =
         Companion().commit(step)
 
     @Suppress("warnings")
     sealed interface Task<out R> {
-        // set task manager as context parameter
+        context(_: Manager<*>)
         fun implicitly(applied: Boolean = true, vararg args: Any?): Task<out R> =
             runWhen({ applied }) { with(Manager) { intercept(*args) } }
 
@@ -732,12 +751,11 @@ sealed interface SchedulerScope : ResolverScope {
 
         sealed interface Invokable<out R> : Task<R> {
             sealed interface ByTag<out R> : Invokable<R> {
-                // convert to contextual function with task and manager as parameter
+                context(_: Task<*>, _: Manager<*>)
                 operator fun invoke(tag: Tag = this.tag): R = TODO()
             }
         }
 
-        // convert to contextual function with task as parameter
         sealed interface Function<out T> : Task<T> {
             fun interface Single<in P1, out R> : Function<R>, suspend (P1) -> R {
                 override suspend fun invoke(p1: P1): R
@@ -781,7 +799,8 @@ sealed interface SchedulerScope : ResolverScope {
         sealed interface Initiative<in P1, in P2, out T> : Function.Tuple<P1, P2, T>, Invokable.ByTag<T> {
             sealed interface Step : Type<SchedulerScope, Self, JobContinuationDefaultIdentityType> {
                 companion object : Step {
-                    override suspend fun invoke(scope: SchedulerScope, self: Self) = JobContinuationDefaultIdentityType::class.reconstruct()
+                    override suspend fun invoke(scope: SchedulerScope, self: Self): JobContinuationDefaultIdentityType =
+                        JobContinuationDefaultIdentityType::class.reconstruct()
             } }
 
             sealed interface Prediction : Type<SchedulerScope, Self, BooleanType> {
@@ -798,7 +817,8 @@ sealed interface SchedulerScope : ResolverScope {
         sealed interface Accumulative<in P1, in P2, in P3, out T> : Function.Triplet<P1, P2, P3, T>, Invokable.ByTag<T> {
             sealed interface Step : Type<SchedulerScope, Self, TaskInput, JobExtensionDefaultIdentityType> {
                 companion object : Step {
-                    override suspend fun invoke(scope: SchedulerScope, self: Self, initial: TaskInput) = JobExtensionDefaultIdentityType::class.reconstruct()
+                    override suspend fun invoke(scope: SchedulerScope, self: Self, initial: TaskInput): JobExtensionDefaultIdentityType =
+                        JobExtensionDefaultIdentityType::class.reconstruct()
             } }
 
             sealed interface Prediction : Type<SchedulerScope, Self, TaskInput, BooleanType> {
@@ -815,8 +835,10 @@ sealed interface SchedulerScope : ResolverScope {
         sealed interface Programmatic<in P1, in P2, in P3, out T> : Initiative<P1, P2, T>, Accumulative<P1, P2, P3, T> {
             sealed interface Step : Type<SchedulerScope, Self, TaskInput, JobExtensionDefaultIdentityType> {
                 companion object : Step {
-                    override suspend fun invoke(scope: SchedulerScope, self: Self) = JobExtensionDefaultIdentityType::class.reconstruct()
-                    override suspend fun invoke(scope: SchedulerScope, self: Self, initial: TaskInput) = JobExtensionDefaultIdentityType::class.reconstruct()
+                    override suspend fun invoke(scope: SchedulerScope, self: Self): JobExtensionDefaultIdentityType =
+                        JobExtensionDefaultIdentityType::class.reconstruct()
+                    override suspend fun invoke(scope: SchedulerScope, self: Self, initial: TaskInput): JobExtensionDefaultIdentityType =
+                        JobExtensionDefaultIdentityType::class.reconstruct()
             } }
 
             sealed interface Prediction : Type<SchedulerScope, Self, TaskInput, BooleanType> {
@@ -834,7 +856,7 @@ sealed interface SchedulerScope : ResolverScope {
     }
 }
 
-inline fun <R> withSchedulerScope(crossinline block: SchedulerScope.Companion.() -> R) =
+inline fun <R> withSchedulerScope(crossinline block: SchedulerScope.Companion.() -> R): R =
     with(SchedulerScope, block)
 
 sealed class CallableSchedulerScope : CallableResolverScope {
@@ -843,126 +865,142 @@ sealed class CallableSchedulerScope : CallableResolverScope {
 
         override fun <I : LifecycleOwner> I.callBy(step: AnyKCallable, args: KParameterMap): Job? = currentThreadJob()
 
+        context(_: CoroutineScope)
         fun <I : LifecycleOwner, R> I.callSelfReferring(step: KCallable<R>, vararg args: Any?): Job? = currentThreadJob()
 
+        context(_: CoroutineScope)
         fun <I : LifecycleOwner, R> I.callSelfReferringBy(step: KCallable<R>, args: KParameterMap): Job? = currentThreadJob()
 
-        // include lifecycle owner in context parameters
+        context(_: LifecycleOwner)
+        @JvmStatic infix fun <R> Job?.then(next: KCallable<R>): Job? = this
 
-        @JvmStatic infix fun <R> Job?.then(next: KCallable<R>) = this
+        context(_: LifecycleOwner)
+        @JvmStatic infix fun <I : CoroutineScope, R> Job?.thenImplicitly(next: suspend I.(Any?, Job) -> R): Job? = this
 
-        @JvmStatic infix fun <I : CoroutineScope, R> Job?.thenImplicitly(next: suspend I.(Any?, Job) -> R) = this
+        context(_: LifecycleOwner)
+        @JvmStatic infix fun <I : CoroutineScope, R> Job?.thenSuspendedImplicitly(next: suspend (I, AnyArray?) -> R): Job? = this
 
-        @JvmStatic infix fun <I : CoroutineScope, R> Job?.thenSuspendedImplicitly(next: suspend (I, AnyArray?) -> R) = this
+        context(_: LifecycleOwner)
+        @JvmStatic infix fun <R> Job?.after(prev: KCallable<R>): Job? = this
 
-        @JvmStatic infix fun <R> Job?.after(prev: KCallable<R>) = this
+        context(_: LifecycleOwner)
+        @JvmStatic infix fun <I : CoroutineScope, R> Job?.afterImplicitly(prev: suspend I.(Any?, Job) -> R): Job? = this
 
-        @JvmStatic infix fun <I : CoroutineScope, R> Job?.afterImplicitly(prev: suspend I.(Any?, Job) -> R) = this
+        context(_: LifecycleOwner)
+        @JvmStatic infix fun <I : CoroutineScope, R> Job?.afterSuspendedImplicitly(prev: suspend (I, AnyArray?) -> R): Job? = this
 
-        @JvmStatic infix fun <I : CoroutineScope, R> Job?.afterSuspendedImplicitly(prev: suspend (I, AnyArray?) -> R) = this
+        context(_: LifecycleOwner)
+        @JvmStatic infix fun Job?.given(predicate: Predicate): Job? = this
 
-        @JvmStatic infix fun Job?.given(predicate: Predicate) = this
+        context(_: LifecycleOwner)
+        @JvmStatic infix fun Job?.givenSuspended(predicate: Prediction): Job? = this
 
-        @JvmStatic infix fun Job?.givenSuspended(predicate: Prediction) = this
+        context(_: LifecycleOwner)
+        @JvmStatic infix fun <I : CoroutineScope, R : BooleanType> Job?.givenImplicitly(predicate: suspend I.(Any?, Job) -> R): Job? = this
 
-        @JvmStatic infix fun <I : CoroutineScope, R : BooleanType> Job?.givenImplicitly(predicate: suspend I.(Any?, Job) -> R) = this
+        context(_: LifecycleOwner)
+        @JvmStatic infix fun <I : CoroutineScope, R : BooleanType> Job?.givenSuspendedImplicitly(predicate: suspend (I, AnyArray?) -> R): Job? = this
 
-        @JvmStatic infix fun <I : CoroutineScope, R : BooleanType> Job?.givenSuspendedImplicitly(predicate: suspend (I, AnyArray?) -> R) = this
+        context(_: LifecycleOwner)
+        @JvmStatic infix fun Job?.unless(predicate: Predicate): Job? = this
 
-        @JvmStatic infix fun Job?.unless(predicate: Predicate) = this
+        context(_: LifecycleOwner)
+        @JvmStatic infix fun Job?.unlessSuspended(predicate: Prediction): Job? = this
 
-        @JvmStatic infix fun Job?.unlessSuspended(predicate: Prediction) = this
+        context(_: LifecycleOwner)
+        @JvmStatic infix fun <I : CoroutineScope, R : BooleanType> Job?.unlessImplicitly(predicate: suspend I.(Any?, Job) -> R): Job? = this
 
-        @JvmStatic infix fun <I : CoroutineScope, R : BooleanType> Job?.unlessImplicitly(predicate: suspend I.(Any?, Job) -> R) = this
+        context(_: LifecycleOwner)
+        @JvmStatic infix fun <I : CoroutineScope, R : BooleanType> Job?.unlessSuspendedImplicitly(predicate: suspend (I, AnyArray?) -> R): Job? = this
 
-        @JvmStatic infix fun <I : CoroutineScope, R : BooleanType> Job?.unlessSuspendedImplicitly(predicate: suspend (I, AnyArray?) -> R) = this
+        context(_: LifecycleOwner)
+        @JvmStatic infix fun <R> Job?.otherwise(next: KCallable<R>): Job? = this
 
-        @JvmStatic infix fun <R> Job?.otherwise(next: KCallable<R>) = this
+        context(_: LifecycleOwner)
+        @JvmStatic infix fun <I : CoroutineScope, R> Job?.otherwiseImplicitly(next: suspend I.(Any?, Job) -> R): Job? = this
 
-        @JvmStatic infix fun <I : CoroutineScope, R> Job?.otherwiseImplicitly(next: suspend I.(Any?, Job) -> R) = this
+        context(_: LifecycleOwner)
+        @JvmStatic infix fun <I : CoroutineScope, R> Job?.otherwiseSuspendedImplicitly(next: suspend (I, AnyArray?) -> R): Job? = this
 
-        @JvmStatic infix fun <I : CoroutineScope, R> Job?.otherwiseSuspendedImplicitly(next: suspend (I, AnyArray?) -> R) = this
+        context(_: LifecycleOwner)
+        @JvmStatic infix fun <R> Job?.onCancel(action: KCallable<R>): Job? = this
 
-        @JvmStatic infix fun <R> Job?.onCancel(action: KCallable<R>) = this
+        context(_: LifecycleOwner)
+        @JvmStatic infix fun <I : CoroutineScope, R> Job?.onCancelImplicitly(next: suspend I.(Any?, Job) -> R): Job? = this
 
-        @JvmStatic infix fun <I : CoroutineScope, R> Job?.onCancelImplicitly(next: suspend I.(Any?, Job) -> R) = this
+        context(_: LifecycleOwner)
+        @JvmStatic infix fun <I : CoroutineScope, R> Job?.onCancelSuspendedImplicitly(next: suspend (I, AnyArray?) -> R): Job? = this
 
-        @JvmStatic infix fun <I : CoroutineScope, R> Job?.onCancelSuspendedImplicitly(next: suspend (I, AnyArray?) -> R) = this
+        context(_: LifecycleOwner)
+        @JvmStatic infix fun <R> Job?.onError(action: KCallable<R>): Job? = this
 
-        @JvmStatic infix fun <R> Job?.onError(action: KCallable<R>) = this
+        context(_: LifecycleOwner)
+        @JvmStatic infix fun <I : CoroutineScope, R> Job?.onErrorImplicitly(next: suspend I.(Any?, Job) -> R): Job? = this
 
-        @JvmStatic infix fun <I : CoroutineScope, R> Job?.onErrorImplicitly(next: suspend I.(Any?, Job) -> R) = this
+        context(_: LifecycleOwner)
+        @JvmStatic infix fun <I : CoroutineScope, R> Job?.onErrorSuspendedImplicitly(next: suspend (I, AnyArray?) -> R): Job? = this
 
-        @JvmStatic infix fun <I : CoroutineScope, R> Job?.onErrorSuspendedImplicitly(next: suspend (I, AnyArray?) -> R) = this
+        context(_: LifecycleOwner)
+        @JvmStatic infix fun <R> Job?.onTimeout(action: KCallable<R>): Job? = this
 
-        @JvmStatic infix fun <R> Job?.onTimeout(action: KCallable<R>) = this
+        context(_: LifecycleOwner)
+        @JvmStatic infix fun <I : CoroutineScope, R> Job?.onTimeoutImplicitly(next: suspend I.(Any?, Job) -> R): Job? = this
 
-        @JvmStatic infix fun <I : CoroutineScope, R> Job?.onTimeoutImplicitly(next: suspend I.(Any?, Job) -> R) = this
+        context(_: LifecycleOwner)
+        @JvmStatic infix fun <I : CoroutineScope, R> Job?.onTimeoutSuspendedImplicitly(next: suspend (I, AnyArray?) -> R): Job? = this
 
-        @JvmStatic infix fun <I : CoroutineScope, R> Job?.onTimeoutSuspendedImplicitly(next: suspend (I, AnyArray?) -> R) = this
-
+        context(_: LifecycleOwner)
         @JvmStatic infix fun Job?.commit(step: SchedulerStep): Job? = this
     }
 
     // requires locating receiver
-    override fun commit(step: AnyKCallable) =
+    override fun commit(step: AnyKCallable): Any? =
         step.call(step.tag /* optional */)
 
-    override fun AnyKCallable.commitStep(scope: CoroutineScope, vararg args: Any?) =
+    // requires passing scope as args[0] for network calls
+    override fun AnyKCallable.commitStep(scope: CoroutineScope, vararg args: Any?): Any? =
         commitSuspend(scope, *args)
 
-    override fun AnyKCallable.commitStepBy(scope: CoroutineScope, args: KParameterMap) =
+    override fun AnyKCallable.commitStepBy(scope: CoroutineScope, args: KParameterMap): Any? =
         commitSuspendBy(args) // TODO - set scope in params map
 
-    override fun AnyKCallable.commitSuspend(vararg args: Any?) =
+    override fun AnyKCallable.commitSuspend(vararg args: Any?): Any? =
         commit { callSuspend(*args) }
 
-    override fun AnyKCallable.commitSuspendBy(args: KParameterMap) =
+    override fun AnyKCallable.commitSuspendBy(args: KParameterMap): Any? =
         commit { callSuspendBy(args) }
 
-    override fun AnyKCallable.commit(vararg args: Any?) =
+    override fun AnyKCallable.commit(vararg args: Any?): Any? =
         call(*args)
 
-    override fun AnyKCallable.commitBy(args: KParameterMap) =
+    override fun AnyKCallable.commitBy(args: KParameterMap): Any? =
         callBy(args)
 
-    override fun AnyKCallable.commitSafely(vararg args: Any?) =
+    override fun AnyKCallable.commitSafely(vararg args: Any?): Any? =
         determine(
             { commitSuspend(this, *args) },
             { commit(*args) })
 
-    override fun AnyKCallable.commitSafelyBy(args: KParameterMap) =
+    override fun AnyKCallable.commitSafelyBy(args: KParameterMap): Any? =
         determine(
             { commitSuspendBy(args) },
             { commitBy(args) })
 
-    private inline fun AnyKCallable.determine(callSuspend: AnyFunction, call: AnyFunction) =
+    private inline fun AnyKCallable.determine(callSuspend: AnyFunction, call: AnyFunction): Any? =
         if (isSuspend) callSuspend() else call()
 }
 
-inline fun <R> withCallableScope(crossinline block: CallableSchedulerScope.Companion.() -> R) =
+inline fun <R> withCallableScope(crossinline block: CallableSchedulerScope.Companion.() -> R): R =
     with(CallableSchedulerScope, block)
 
 @Coordinate
 internal object Scheduler : SchedulerScope, LiveStepReceiver.Synchronizer<LiveStepIdentityType>() {
-    @Key(1)
-    @JvmField var activityConfigurationChangeManager: ConfigurationChangeManager? = null
-
-    @Key(2)
-    @JvmField var activityNightModeChangeManager: NightModeChangeManager? = null
-
-    @Key(3)
-    @JvmField var activityLocalesChangeManager: LocalesChangeManager? = null
-
-    @Key(4)
-    @JvmField var applicationMigrationManager: ApplicationMigrationManager? = null
-
     @JvmStatic fun observe() {
         run(::observeForever) }
 
-    @JvmStatic fun observeAsync() = commitLockedByFunctionUnless(::hasObservers, ::observe)
+    @JvmStatic fun observeAsync(): Unit = commitLockedByFunctionUnless(::hasObservers, ::observe)
 
-    @JvmStatic fun observe(owner: LifecycleOwner) = observe(owner, this) /* register lifecycle owner */
+    @JvmStatic fun observe(owner: LifecycleOwner): Unit = observe(owner, this) /* register lifecycle owner */
 
     @JvmStatic fun ignore() {
         run(::removeObserver) }
@@ -975,31 +1013,10 @@ internal object Scheduler : SchedulerScope, LiveStepReceiver.Synchronizer<LiveSt
         // check lifecycle owner state
         SchedulerScope.isSchedulerObserved = false }
 
-    @JvmStatic fun <T : Resolver> commit(resolver: KClass<out T>, provider: Any, vararg context: Any?) =
-        when (resolver) {
-            ApplicationMigrationManager::class ->
-                ::applicationMigrationManager.require(provider)
-            ConfigurationChangeManager::class ->
-                ::activityConfigurationChangeManager.require(provider)
-            NightModeChangeManager::class ->
-                ::activityNightModeChangeManager.require(provider)
-            LocalesChangeManager::class ->
-                ::activityLocalesChangeManager.require(provider)
-            MemoryManager::class ->
-                object : MemoryManager {}
-            else -> null
-        }?.commit(*context)
-
-    @JvmStatic fun clearResolverObjects() {
-        activityConfigurationChangeManager = null
-        activityNightModeChangeManager = null
-        activityLocalesChangeManager = null
-        applicationMigrationManager = null }
-
-    override val coroutineContext
+    override val coroutineContext: CoroutineDispatcher
         get() = Default
 
-    override fun commit(step: AnyCoroutineStep) =
+    override fun commit(step: AnyCoroutineStep): Any? =
         attach(step.markTagForSchCommit(), ::launch)
 
     override fun onChanged(value: AnyStep?) {
@@ -1010,7 +1027,7 @@ internal object Scheduler : SchedulerScope, LiveStepReceiver.Synchronizer<LiveSt
             value.markTagForSchExec()
             ?.run { synchronize(this, ::block) } }
 
-    override fun <R> synchronize(lock: AnyStep?, block: () -> R) =
+    override fun <R> synchronize(lock: AnyStep?, block: () -> R): R =
         if (lock !== null) {
             if (withSchedulerScope {
                 lock.isScheduledAhead })
@@ -1031,19 +1048,20 @@ internal object Scheduler : SchedulerScope, LiveStepReceiver.Synchronizer<LiveSt
                 Unit.type() } } }
         else Unit.type()
 
-    override infix fun AnyStep.from(ref: AnyStep) = TODO()
+    override infix fun AnyStep.from(ref: AnyStep): AnyStep = TODO()
 
-    override val descriptor
+    override val descriptor: StepDescriptor
         get() = object : StepDescriptor {
-            override fun <A : AnyStep, B : AnyStep> A.onValueChanged(value: B, block: BaseStepDescriptor.(AnyStep) -> Any?) = TODO()
+            context(_: AnyDescriptor)
+            override fun <A : AnyStep, B : AnyStep> A.onValueChanged(value: B, block: BaseStepDescriptor.(AnyStep) -> Any?): BaseStepDescriptor = TODO()
         }
 
     override var queue: AnyFunctionList = mutableListOf()
 
-    @JvmStatic operator fun <R> invoke(work: Scheduler.() -> R) = this.work()
+    @JvmStatic operator fun <R> invoke(work: Scheduler.() -> R): R = this.work()
 }
 
-internal fun commit(scope: CoroutineScope? = SchedulerScope(), step: AnyCoroutineStep) =
+internal fun commit(scope: CoroutineScope? = SchedulerScope(), step: AnyCoroutineStep): ResolverTransactionIdentityType =
     (scope
     ?: step.annotatedScope
     ?: foregroundLifecycleOwner?.lifecycleScope
@@ -1060,41 +1078,29 @@ internal fun commit(scope: CoroutineScope? = SchedulerScope(), step: AnyCoroutin
         ?: return commit(step)
         ).call(this, step) }
 
-internal inline fun <reified T : Resolver, reified I> commit(vararg context: Any?) =
-    commit(T::class, I::class, *context)
-
-internal inline fun <reified T : Resolver> LifecycleOwner.commit(member: UnitKFunction, vararg context: Any?) =
-    commit(T::class, this, member, *context)
-
-internal inline fun <reified T : Resolver> Activity.commit(member: UnitKFunction, vararg context: Any?) =
-    commit(T::class, this, member, *context)
-
-internal inline fun <reified T : Resolver> Context.commit(member: UnitKFunction, vararg context: Any?) =
-    commit(T::class, this, member, *context)
-
-fun <R> schedule(step: KCallable<R>) =
+fun <R> schedule(step: KCallable<R>): Unit =
     SchedulerScope.repostByPreference(step, AnyStep::post, ::handle)
 
-internal fun <R> scheduleAhead(step: KCallable<R>) =
+internal fun <R> scheduleAhead(step: KCallable<R>): Unit =
     SchedulerScope.repostByPreference(step, AnyStep::postAhead, ::handleAhead)
 
-internal fun schedule(step: Step) =
+internal fun schedule(step: Step): Unit =
     SchedulerScope.repostByPreference(step, AnyStep::post, ::handle)
 
-internal fun scheduleAhead(step: Step) =
+internal fun scheduleAhead(step: Step): Unit =
     SchedulerScope.repostByPreference(step, AnyStep::postAhead, ::handleAhead)
 
-internal fun attach(step: AnyCoroutineStep) =
+internal fun attach(step: AnyCoroutineStep): Any? =
     attach(step,
         if (SchedulerScope.isClockPreferred)
             ::handle
         else ::launch,
         ::reattach)
 
-internal fun attach(step: AnyCoroutineStep, enlist: AnyCoroutineFunction) =
+internal fun attach(step: AnyCoroutineStep, enlist: AnyCoroutineFunction): Any? =
     attach(step, enlist, ::reattach)
 
-private fun attach(step: AnyCoroutineStep, enlist: AnyCoroutineFunction, transfer: AnyCoroutineFunction) =
+private fun attach(step: AnyCoroutineStep, enlist: AnyCoroutineFunction, transfer: AnyCoroutineFunction): Any? =
     when (val result = trySafelyForResult { enlist(step) }) {
         null, false ->
             transfer(step)
@@ -1105,7 +1111,7 @@ private fun attach(step: AnyCoroutineStep, enlist: AnyCoroutineFunction, transfe
         else
             result }
 
-private fun reattach(step: AnyCoroutineStep) =
+private fun reattach(step: AnyCoroutineStep): Any? =
     try {
         if (step.isEnlisted)
             trySafelyForResult { detach(step) }
@@ -1114,7 +1120,7 @@ private fun reattach(step: AnyCoroutineStep) =
     catch (_: Throwable) {
         repost { step() } }
 
-private fun detach(step: AnyCoroutineStep) =
+private fun detach(step: AnyCoroutineStep): AnyCoroutineStep =
     (withClock { run {
         synchronize {
             ::isRunning.then {
@@ -1124,16 +1130,16 @@ private fun detach(step: AnyCoroutineStep) =
     ).applyUnlistedOnce()
     ?: step
 
-internal fun repost(step: CoroutineStep) =
+internal fun repost(step: CoroutineStep): Unit =
     SchedulerScope.repostByPreference(step, AnyStep::post, ::handle)
 
-internal fun repostAhead(step: CoroutineStep) =
+internal fun repostAhead(step: CoroutineStep): Unit =
     SchedulerScope.repostByPreference(step, AnyStep::postAhead, ::handleAhead)
 
-private fun AnyStep.post() = run(Scheduler::postValue)
-private fun AnyStep.postAhead() = run(Scheduler::setValue)
+private fun AnyStep.post(): Unit = run(Scheduler::postValue)
+private fun AnyStep.postAhead(): Unit = run(Scheduler::setValue)
 
-private fun launch(step: AnyCoroutineStep) =
+private fun launch(step: AnyCoroutineStep): Job =
     step.annotatedScopeOrScheduler().launch { step() } // internal for Scheduler.commit, attach, and reattach
 
 internal sealed interface SchedulerContext : CoroutineContext {
@@ -1143,46 +1149,46 @@ internal sealed interface SchedulerContext : CoroutineContext {
             object : ActiveContextSynchronizer by State {
                 init { attach(foregroundFragment) }
         }) {
-        private fun <R> foldAsync(initial: R, operation: (R, CoroutineContext.Element) -> R) =
+        private fun <R> foldAsync(initial: R, operation: (R, CoroutineContext.Element) -> R): R =
             asFunctionSetCoordinator()
             .synchronize(
                 asActiveContextSynchronizer().id)
             { foldSync(initial, operation) }
 
-        private fun <R> foldSync(initial: R, operation: (R, CoroutineContext.Element) -> R) =
+        private fun <R> foldSync(initial: R, operation: (R, CoroutineContext.Element) -> R): R =
             operation(initial, SchedulerElement)
 
         /* update continuation state
         // register initial and operation - return operation */
-        override fun <R> fold(initial: R, operation: (R, CoroutineContext.Element) -> R) =
+        override fun <R> fold(initial: R, operation: (R, CoroutineContext.Element) -> R): R =
             foldSync(initial, operation)
 
         /* notify element continuation (key <-> element)
         // register element key - return element */
-        override fun <E : CoroutineContext.Element> get(key: CoroutineContext.Key<E>) = null
+        override fun <E : CoroutineContext.Element> get(key: CoroutineContext.Key<E>): E? = null
 
         /* reimpose continuation rules
         // register minus key - return context */
-        override fun minusKey(key: CoroutineContext.Key<*>) = this
+        override fun minusKey(key: CoroutineContext.Key<*>): CoroutineContext = this
 
         // sets focus to scope
-        override fun <R> ReceiverItem<R>.set(value: R) = SchedulerContext
+        override fun <R> ReceiverItem<R>.set(value: R): ReceiverItem<CoroutineScope> = SchedulerContext
 
         // informs context of item requirements
-        override fun <R> scope(item: KCallable<R>) = TODO()
+        override fun <R> scope(item: KCallable<R>): Unit = TODO()
 
         // intercept new context
-        override fun plus(context: CoroutineContext) =
+        override fun plus(context: CoroutineContext): CoroutineContext =
             super.plus(context)
     }
 
     // notifies an in-context step about its start mode
-    fun <S> notify(step: S, start: CoroutineStart = CoroutineStart.DEFAULT, owner: LifecycleOwner? = null) = this
+    fun <S> notify(step: S, start: CoroutineStart = CoroutineStart.DEFAULT, owner: LifecycleOwner? = null): CoroutineContext = this
 }
 
 private interface SchedulerElement : CoroutineContext.Element {
     companion object : SchedulerElement {
-        @JvmStatic override val key
+        @JvmStatic override val key: SchedulerKey
             get() = SchedulerKey
     }
 }
@@ -1191,21 +1197,21 @@ private interface SchedulerKey : CoroutineContext.Key<SchedulerElement> {
     companion object : SchedulerKey
 }
 
-internal fun <R> CoroutineScope.relaunch(instance: JobKProperty, group: FunctionSet?, context: CoroutineContext = SchedulerContext, start: CoroutineStart = CoroutineStart.DEFAULT, step: suspend CoroutineScope.() -> R) =
+internal fun <R> CoroutineScope.relaunch(instance: JobKProperty, group: FunctionSet?, context: CoroutineContext = SchedulerContext, start: CoroutineStart = CoroutineStart.DEFAULT, step: suspend CoroutineScope.() -> R): Job =
     relaunch(instance, context, start, step)
     .also { job -> markTagsInGroupForJobRelaunch(instance, step, group, job, null, context, start) }
 
-private fun <R> CoroutineScope.relaunch(instance: JobKProperty, context: CoroutineContext, start: CoroutineStart, step: suspend CoroutineScope.() -> R) =
+private fun <R> CoroutineScope.relaunch(instance: JobKProperty, context: CoroutineContext, start: CoroutineStart, step: suspend CoroutineScope.() -> R): Job =
     instance.requireActive {
     launch(context, start, step) }
 
-internal fun <R> launch(context: CoroutineContext = SchedulerContext, start: CoroutineStart = CoroutineStart.DEFAULT, step: suspend CoroutineScope.() -> R) =
+internal fun <R> launch(context: CoroutineContext = SchedulerContext, start: CoroutineStart = CoroutineStart.DEFAULT, step: suspend CoroutineScope.() -> R): Job =
     step.markTagForSchLaunch()
         .afterTrackingTagsForJobLaunch(null, context, start).let { trackedStep ->
     Scheduler.launch(context, start) { trackedStep() }
         .applySaveNewElement(step) }
 
-private fun CoroutineScope.determineCoroutine(owner: LifecycleOwner, context: CoroutineContext, start: CoroutineStart, step: AnyCoroutineStep) =
+private fun CoroutineScope.determineCoroutine(owner: LifecycleOwner, context: CoroutineContext, start: CoroutineStart, step: AnyCoroutineStep): Triple<CoroutineContext, CoroutineStart, AnyCoroutineStep> =
     Triple(
         // context key <-> step <-> owner
         with(context) {
@@ -1220,11 +1226,11 @@ private fun CoroutineScope.determineCoroutine(owner: LifecycleOwner, context: Co
 private val CoroutineContext.parent: CoroutineContext
     get() = SchedulerContext
 
-private val CoroutineContext.isSchedulerContext
+private val CoroutineContext.isSchedulerContext: Boolean
     get() = typeIs<SchedulerContext, _>() or
             get(SchedulerKey).isSchedulerElement
 
-private val CoroutineContext.Element?.isSchedulerElement
+private val CoroutineContext.Element?.isSchedulerElement: Boolean
     get() = typeIs<SchedulerElement, _>()
 
 // revises state dependency maps that correlate with other execution contexts
@@ -1303,15 +1309,15 @@ internal interface ContextSynchronizer<L> : Synchronizer<L>, OpenContextCoordina
 }
 
 internal interface ActiveContextSynchronizer : BaseContextSynchronizer {
-    fun attach(fragment: Fragment?) =
+    fun attach(fragment: Fragment?): ContextCoordinator<State, State> =
         merge(
             (fragment as? SchedulerFragment)
             ?.view.asType<DirectStateCoordinator>())
 }
 
-private fun <S : FunctionSetPointer> Any.asActiveContext() = asTypeUnsafe<ActiveContext<S>>()
-private fun Any.asActiveContextSynchronizer() = asActiveContext<FunctionSetPointer>()
-private fun Any.asFunctionSetCoordinator() = asSynchronizer<FunctionSetPointer>()
+private fun <S : FunctionSetPointer> Any.asActiveContext(): ActiveContext<S> = asTypeUnsafe<ActiveContext<S>>()
+private fun Any.asActiveContextSynchronizer(): ActiveContext<FunctionSetPointer> = asActiveContext()
+private fun Any.asFunctionSetCoordinator(): Synchronizer<FunctionSetPointer> = asSynchronizer()
 
 internal typealias BaseContextSynchronizer = ContextSynchronizer<State>
 private typealias DirectContextCoordinator = OpenContextCoordinator<State, State>
@@ -1323,43 +1329,42 @@ private suspend fun CoroutineScope.registerContext(context: WeakContext) {
 // active references can be generated at this point - steps can express (by tag) items they depend on
 // scheduler context allows to communicate to refactoring layer by intercepting chained calls in connected statements
 // in order to infuse/declare flexible points ahead of runtime
-private fun AnyCoroutineStep.afterTrackingTagsForJobLaunch(owner: LifecycleOwner? = null, context: CoroutineContext, start: CoroutineStart) =
+private fun AnyCoroutineStep.afterTrackingTagsForJobLaunch(owner: LifecycleOwner? = null, context: CoroutineContext, start: CoroutineStart): AnyCoroutineStep =
     run(::returnTag)?.let { tag -> withSchedulerScope {
     (after { _, job -> markTagsForJobLaunch(tag, this@afterTrackingTagsForJobLaunch, job, owner, context, start) })!! } }
     ?: this
 
 // process tag to identify parent/relative job block
 // numeric unifiers can be handy here
-private fun FunctionSet.relateByTag(tag: Tag) =
+private fun FunctionSet.relateByTag(tag: Tag): TagTypeToAnyPair? =
     relateByTagOrFallback(tag) { tag ->
     when (tag) {
         INET_FUNCTION -> findByTag(INET)
         else -> null } }
 
-private fun FunctionSet.relateByTag(tag: Tag, translate: TagConversion) =
+private fun FunctionSet.relateByTag(tag: Tag, translate: TagConversion): TagTypeToAnyPair? =
     relateByTagOrFallback(tag) { tag ->
     translate(tag)
         .resultWhen({ isNot(tag) }, ::findByTag) }
 
-private inline fun FunctionSet.relateByTagOrFallback(tag: Tag, fallback: (TagType) -> FunctionItem?) =
+private inline fun FunctionSet.relateByTagOrFallback(tag: Tag, fallback: (TagType) -> FunctionItem?): TagTypeToAnyPair? =
     tag.id.let { tag ->
     findByTag(tag) ?:
     fallback(tag) }
 
-private fun FunctionSet.relateInstanceByTag(tag: Tag) =
+private fun FunctionSet.relateInstanceByTag(tag: Tag): Any? =
     relateByTag(tag)?.instance
 
-private fun FunctionSet.relateInstanceByTag(tag: Tag, translate: TagConversion) =
+private fun FunctionSet.relateInstanceByTag(tag: Tag, translate: TagConversion): Any? =
     relateByTag(tag, translate)?.instance
 
-internal fun Job.getInstance(tag: TagType) =
+internal fun Job.getInstance(tag: TagType): Any? =
     jobs?.findInstanceByTag(tag)
 
 internal fun Job.setInstance(tag: TagType, value: Any?) {
     // addressable layer work
     value.markTag(tag, jobs) }
 
-// optionally, include function set as context parameter
 private var jobs: FunctionSet? = null
 
 private var livesteps: FunctionSet? = null
@@ -1369,7 +1374,8 @@ private var callbacks: FunctionSet? = null
 internal var items: FunctionSet? = null
 
 internal open class Item<R>(target: KCallable<R>) : Reference.Stub<R>(target), Addressed<R>, Tagged {
-    open fun onSave(subtag: TagType, value: Any?) = also { when (subtag) {
+    open fun onSave(subtag: TagType, value: Any?): Item<R> = also {
+        when (subtag) {
         FUNC ->
             if (target.isNullValue())
                 value.asType<KCallable<R>>()?.apply(::setTarget)
@@ -1377,9 +1383,10 @@ internal open class Item<R>(target: KCallable<R>) : Reference.Stub<R>(target), A
                 /* save sub-function */ }
     } }
 
-    open fun onSaveIndex(index: Number) = this
+    open fun onSaveIndex(index: Number): Item<R> = this
 
     companion object Scope : ImplicitScope<Tag>, ImplicitResultScope {
+        context(_: Implication<T>)
         override fun <T> Tag.implicitly(): KCallable<T> = TODO()
 
         override fun <S : AnyKCallable> AnyKCallable.intercept(vararg args: Any?): S = TODO()
@@ -1455,32 +1462,33 @@ internal open class Item<R>(target: KCallable<R>) : Reference.Stub<R>(target), A
         this.value.tag?.let { register(it) } }
 
     internal companion object Cache : ImplicitScope<CoroutineScope>, MutableMap<Any, AnyKCallable> by mutableMapOf() {
+        context(_: Implication<T>)
         override fun <T> CoroutineScope.implicitly(): KCallable<T> = TODO()
 
-        @JvmStatic private fun <V> Value<V>.register(tag: Tag) = set(tag, this)
+        @JvmStatic private fun <V> Value<V>.register(tag: Tag): Unit = set(tag, this)
 
-        @JvmStatic private fun <V> Value<V>.saveTag(tag: TagType) = set(tag, this)
+        @JvmStatic private fun <V> Value<V>.saveTag(tag: TagType): Unit = set(tag, this)
 
-        @JvmStatic private fun <V> Value<V>.saveTarget(target: KCallable<V>) =
+        @JvmStatic private fun <V> Value<V>.saveTarget(target: KCallable<V>): Unit? =
             target.tag?.let { set(it, target) }
 
-        @JvmStatic inline fun <reified V : Any> filterByTag(target: KCallable<V>, transform: (Tag, Any) -> TagType? = ::matchByTagOrValue, comparator: TagType.(Any?) -> Boolean = TagType::equals) =
+        @JvmStatic inline fun <reified V : Any> filterByTag(target: KCallable<V>, transform: (Tag, Any) -> TagType? = ::matchByTagOrValue, comparator: TagType.(Any?) -> Boolean = TagType::equals): Collection<AnyKCallable>? =
             target.tag?.let { tag ->
                 filter { it.key.let { key ->
                     (key isNotObject tag) and
                     comparator(tag.id, transform(tag, key)) }
                 }.values }
 
-        @JvmStatic inline fun <reified V : Any> findByTag(target: KCallable<V>, transform: (Tag, Any) -> TagType? = ::matchByTagOrValue, comparator: TagType.(Any?) -> Boolean = TagType::equals) =
+        @JvmStatic inline fun <reified V : Any> findByTag(target: KCallable<V>, transform: (Tag, Any) -> TagType? = ::matchByTagOrValue, comparator: TagType.(Any?) -> Boolean = TagType::equals): V? =
             filterByTag(target, transform, comparator)?.firstOrNull()?.call().asType<V>()
 
-        @JvmStatic private fun matchByTagOrValue(tag: Tag, key: Any) =
+        @JvmStatic fun matchByTagOrValue(tag: Tag, key: Any): TagType? =
             if (key is Tag) key.id else key.asTagType()
 
-        @JvmStatic private fun matchByTag(tag: Tag, key: Any) =
+        @JvmStatic private fun matchByTag(tag: Tag, key: Any): TagType? =
             key.asTag()?.id
 
-        @JvmStatic private fun matchByValue(tag: Tag, key: Any) =
+        @JvmStatic private fun matchByValue(tag: Tag, key: Any): TagType? =
             resultUnless({ key is Tag }, Any::asTagType)
     }
 
@@ -1498,7 +1506,7 @@ internal open class Item<R>(target: KCallable<R>) : Reference.Stub<R>(target), A
         saveTag(tag)
         return this }
 
-    val type
+    val type: AnyKClass
         get() = value.getInstance()
             ?.let { it::class }
             ?: Nothing::class
@@ -1516,57 +1524,57 @@ internal open class Item<R>(target: KCallable<R>) : Reference.Stub<R>(target), A
         get() = toString().length
 }
 
-internal fun <I : AnyTransactor, T> I.getInstance(ref: Coordinate) =
+internal fun <I : AnyTransactor, T> I.getInstance(ref: Coordinate): T =
     with(ref) { getInstance<_, T>(target, key) }
 
 private fun <I : AnyTransactor, T> I.getInstance(target: AnyKClass = Any::class, key: KeyType): T = TODO()
 
-private fun <I : AnyTransactor> I.coroutineStep(target: AnyKClass, key: KeyType) =
+private fun <I : AnyTransactor> I.coroutineStep(target: AnyKClass, key: KeyType): AnyCoroutineStep =
     getInstance<_, AnyCoroutineStep>(target, key)
 
-private fun <I : AnyTransactor> I.liveStep(target: AnyKClass, key: KeyType) =
+private fun <I : AnyTransactor> I.liveStep(target: AnyKClass, key: KeyType): SequencerStep =
     getInstance<_, SequencerStep>(target, key)
 
-private fun <I : AnyTransactor> I.step(target: AnyKClass, key: KeyType) =
+private fun <I : AnyTransactor> I.step(target: AnyKClass, key: KeyType): AnyStep =
     getInstance<_, AnyStep>(target, key)
 
-private fun <I : AnyTransactor> I.runnable(target: AnyKClass, key: KeyType) =
+private fun <I : AnyTransactor> I.runnable(target: AnyKClass, key: KeyType): Runnable =
     getInstance<_, Runnable>(target, key)
 
-internal fun FunctionSet.addFunction(function: Any, tag: TagType?, keep: Boolean) =
+internal fun FunctionSet.addFunction(function: Any, tag: TagType?, keep: Boolean): Boolean =
     add(function.toFunctionItem(
-        tag?.let { { it } }
+        tag?.asPointer()
             ?: currentThreadJob()::hashTag,
         keep))
 
-internal fun Any.toFunctionItem(tag: TagTypePointer, keep: Boolean) =
+internal fun Any.toFunctionItem(tag: TagTypePointer, keep: Boolean): FunctionItem =
     FunctionItem(tag, this to keep) /* provides extra filters */
 
-internal val FunctionItem.instance
+internal val FunctionItem.instance: Any?
     get() = second.asAnyToBooleanPair()?.first
 
-internal fun FunctionSet.findByTag(tag: TagType, transform: (TagType, FunctionItem) -> TagType? = { _, it -> it.first() }) =
+internal fun FunctionSet.findByTag(tag: TagType, transform: (TagType, FunctionItem) -> TagType? = { _, it -> it.first() }): FunctionItem? =
     find { tag `is` transform(tag, it) }
 
-internal fun FunctionSet.findInstanceByTag(tag: TagType, transform: (TagType, FunctionItem) -> TagType? = { _, it -> it.first() }) =
+internal fun FunctionSet.findInstanceByTag(tag: TagType, transform: (TagType, FunctionItem) -> TagType? = { _, it -> it.first() }): Any? =
     findByTag(tag, transform)?.instance
 
-private fun FunctionSet.save(self: AnyKCallable, tag: Tag) =
+private fun FunctionSet.save(self: AnyKCallable, tag: Tag): Any =
     with(tag) { save(self, id, keep) }
 
-internal fun FunctionSet.save(self: AnyKCallable, tag: Tag, type: Item.Type) =
+internal fun FunctionSet.save(self: AnyKCallable, tag: Tag, type: Item.Type): Any =
     save(self, tag)
     .alsoAsItemSetType(type)
 
-private fun FunctionSet.save(function: AnyKCallable, tag: TagType) =
+private fun FunctionSet.save(function: AnyKCallable, tag: TagType): Tag? =
     function.tag?.apply {
     save(function, combineTags(tag, id), keep) }
 
-internal fun FunctionSet.save(function: AnyKCallable, tag: TagType, type: Item.Type) =
+internal fun FunctionSet.save(function: AnyKCallable, tag: TagType, type: Item.Type): Tag? =
     save(function, tag)
     .alsoAsItemSetType(type)
 
-private fun FunctionSet.save(function: AnyKCallable, tag: TagType?, keep: Boolean) =
+private fun FunctionSet.save(function: AnyKCallable, tag: TagType?, keep: Boolean): Any =
     tag?.let(::findInstanceByTag)
         ?.also { if (it is AnyItem) { with(it) {
             onSave(FUNC, function)
@@ -1581,61 +1589,61 @@ private fun FunctionSet.save(function: AnyKCallable, tag: TagType?, keep: Boolea
 
 // marking
 
-private fun <T> T.itemized() = this
+private fun <T> T.itemized(): T = this
 
-internal fun AnyKCallable.markTag(group: FunctionSet?) =
+internal fun AnyKCallable.markTag(group: FunctionSet?): Tag? =
     tag?.also { group?.save(itemized(), it) }
 
 private fun Any?.markValue(tag: TagType) {}
 
-internal fun Any?.markTag(group: FunctionSet?) =
+internal fun Any?.markTag(group: FunctionSet?): Tag? =
     asReference().markTag(group)
 
-internal fun Any?.markTag(tag: TagType, group: FunctionSet?) =
+internal fun Any?.markTag(tag: TagType, group: FunctionSet?): Tag? =
     group?.save(itemized().asReference(), tag)
 
-internal fun Any.markSequentialTag(tag: TagType?, id: TagType, group: FunctionSet?) =
+internal fun Any.markSequentialTag(tag: TagType?, id: TagType, group: FunctionSet?): TagType? =
     tag?.let { tag ->
     reduceTags(tag, TAG_DASH, id)
     .also { this@markSequentialTag.markTag(it, group) } }
 
-fun Any?.applyTrackTag(tag: Tag?, group: FunctionSet?) =
+fun Any?.applyTrackTag(tag: Tag?, group: FunctionSet?): Tag? =
     tag.result { applyMarkTag(this, group) }
 
-internal fun <T> T.applyMarkTag(group: FunctionSet?) = apply { markTag(group) }
+internal fun <T> T.applyMarkTag(group: FunctionSet?): T = apply { markTag(group) }
 
-internal fun <T> T.applyMarkTag(tag: TagType, group: FunctionSet?) = apply { markTag(tag, group) }
+internal fun <T> T.applyMarkTag(tag: TagType, group: FunctionSet?): T = apply { markTag(tag, group) }
 
-internal fun <T> T.applyMarkTag(tag: Tag, group: FunctionSet?) = applyMarkTag(tag.id, group)
+internal fun <T> T.applyMarkTag(tag: Tag, group: FunctionSet?): T = applyMarkTag(tag.id, group)
 
-private fun AnyStep?.markTagForSchExec() = applyMarkTag(SCH_EXEC, items)
-private fun AnyStep.markTagForSchPost() = applyMarkTag(SCH_POST, items)
+private fun AnyStep?.markTagForSchExec(): AnyStep? = applyMarkTag(SCH_EXEC, items)
+private fun AnyStep.markTagForSchPost(): AnyStep = applyMarkTag(SCH_POST, items)
 
-private fun AnyCoroutineStep.markTagForFloLaunch() = applyMarkTag(FLO_LAUNCH, jobs)
-private fun AnyCoroutineStep.markTagForSchCommit() = applyMarkTag(SCH_COMMIT, jobs)
-private fun AnyCoroutineStep.markTagForSchLaunch() = applyMarkTag(SCH_LAUNCH, jobs)
-private fun AnyCoroutineStep.markTagForSchPost() = applyMarkTag(SCH_POST, jobs)
-internal fun AnyCoroutineStep.markTagForSvcCommit() = applyMarkTag(SVC_COMMIT, items)
+private fun AnyCoroutineStep.markTagForFloLaunch(): AnyCoroutineStep = applyMarkTag(FLO_LAUNCH, jobs)
+private fun AnyCoroutineStep.markTagForSchCommit(): AnyCoroutineStep = applyMarkTag(SCH_COMMIT, jobs)
+private fun AnyCoroutineStep.markTagForSchLaunch(): AnyCoroutineStep = applyMarkTag(SCH_LAUNCH, jobs)
+private fun AnyCoroutineStep.markTagForSchPost(): AnyCoroutineStep = applyMarkTag(SCH_POST, jobs)
+internal fun AnyCoroutineStep.markTagForSvcCommit(): AnyCoroutineStep = applyMarkTag(SVC_COMMIT, items)
 
-internal fun Runnable.markTagForClkExec() = applyMarkTag(CLK_EXEC, callbacks)
+internal fun Runnable.markTagForClkExec(): Runnable = applyMarkTag(CLK_EXEC, callbacks)
 
-private fun <T> T.alsoAsItemSetType(type: Item.Type) = also { if (this is AnyItem) setType(type) }
+private fun <T> T.alsoAsItemSetType(type: Item.Type): T = also { if (this is AnyItem) setType(type) }
 
-private fun markTagsForJobLaunch(tag: TagType, step: AnyCoroutineStep, job: Job, owner: LifecycleOwner?, context: CoroutineContext, start: CoroutineStart) =
+private fun markTagsForJobLaunch(tag: TagType, step: AnyCoroutineStep, job: Job, owner: LifecycleOwner?, context: CoroutineContext, start: CoroutineStart): TagType? =
     tag.asTagType()?.also { tag ->
     jobs?.saveCoroutine(step.itemized().asReference(), tag)
         ?.asCoroutineItem()
         ?.onSaveLifecycleOwner(owner)
         ?.onJobLaunch(job, context, start) }
 
-private fun markTagsInGroupForJobRelaunch(instance: JobKProperty, block: AnyCoroutineStep, group: FunctionSet?, job: Job, owner: LifecycleOwner?, context: CoroutineContext, start: CoroutineStart) =
+private fun markTagsInGroupForJobRelaunch(instance: JobKProperty, block: AnyCoroutineStep, group: FunctionSet?, job: Job, owner: LifecycleOwner?, context: CoroutineContext, start: CoroutineStart): Tag? =
     block.asReference().let { parent ->
     instance.tag?.also { tag ->
     group?.saveCoroutine(parent.itemized(), tag)
         ?.asCoroutineItem()
         ?.onJobRelaunch(job, owner, context, start) } }
 
-internal fun <I : CoroutineScope, R> markTagsForJobContinuationRepeat(step: suspend (I?, Any?) -> R, group: FunctionSet?, job: Job, predicate: Prediction?, delay: DelayFunction) =
+internal fun <I : CoroutineScope, R> markTagsForJobContinuationRepeat(step: suspend (I?, Any?) -> R, group: FunctionSet?, job: Job, predicate: Prediction?, delay: DelayFunction): FunctionSet? =
     group?.apply {
     step.asReference().let { block ->
     block.tag?.also { tag ->
@@ -1646,7 +1654,7 @@ internal fun <I : CoroutineScope, R> markTagsForJobContinuationRepeat(step: susp
 
 internal fun <I : CoroutineScope, S, R> markTagsForJobExtensionRepeat(step: suspend (I?, Any?, S) -> R, group: FunctionSet?, job: Job, predicate: Prediction?, delay: DelayFunction): FunctionSet? = TODO()
 
-internal fun markTagsForSeqAttach(tag: Any?, step: AnyTriple, index: Int) =
+internal fun markTagsForSeqAttach(tag: Any?, step: AnyTriple, index: Int): TagType? =
     tag?.asTagType()?.also { tag ->
     (livesteps?.run {
         findInstanceByTag(tag)
@@ -1656,20 +1664,20 @@ internal fun markTagsForSeqAttach(tag: Any?, step: AnyTriple, index: Int) =
         ?.onAttachBy(step)
         ?.onAttach(index) }
 
-internal fun markTagsForSeqLaunch(step: SequencerStep, job: Job, index: Int, context: CoroutineContext?) =
+internal fun markTagsForSeqLaunch(step: SequencerStep, job: Job, index: Int, context: CoroutineContext?): Tag? =
     step.asReference().let { step ->
     step.tag?.also { tag ->
     livesteps?.saveLiveStep(step.itemized(), tag)
         ?.asLiveStepItem()
         ?.onObserve(job, index, context) } }
 
-internal fun markTagsForCtxReform(tag: TagType?, job: Job, stage: ContextStep?, form: AnyStep) =
+internal fun markTagsForCtxReform(tag: TagType?, job: Job, stage: ContextStep?, form: AnyStep): TagType? =
     tag?.also { tag ->
     items?.findInstanceByTag(tag)
         ?.asCoroutineItem()
         ?.onContextReform(job, stage, form) }
 
-internal fun markTagsForClkAttach(step: Any, index: Number) =
+internal fun markTagsForClkAttach(step: Any, index: Number): TagType? =
     when (step) {
     is Runnable ->
         getTag(step)?.also { tag ->
@@ -1748,7 +1756,7 @@ internal val Any?.transit: Transit
 private val LifecycleOwner.annotatedScope: Array<out CoroutineScope>?
     get() = null // search in superclasses
 
-private val Any.annotatedScope
+private val Any.annotatedScope: CoroutineScope?
     get() = trySafelyForResult { asReference().annotatedScope!!.let { annotation ->
         if (with(annotation.type) {
             isObject(Scheduler::class) or
@@ -1766,11 +1774,11 @@ private val Any.annotatedScope
                 rejectWithImplementationRestriction()
         } as CoroutineScope } }
 
-private fun Any.annotatedOrSchedulerScope() = annotatedScope ?: SchedulerScope()
+private fun Any.annotatedOrSchedulerScope(): CoroutineScope = annotatedScope ?: SchedulerScope()
 
-private fun Any.annotatedScopeOrScheduler() = annotatedScope ?: Scheduler
+private fun Any.annotatedScopeOrScheduler(): CoroutineScope = annotatedScope ?: Scheduler
 
-private fun AnyFunction.invokeOnceWhenScheduledAhead() = apply {
+private fun AnyFunction.invokeOnceWhenScheduledAhead(): AnyFunction = apply {
     if (withSchedulerScope {
         isScheduledAhead }) {
         invoke()
@@ -1779,7 +1787,7 @@ private fun AnyFunction.invokeOnceWhenScheduledAhead() = apply {
 internal fun AnyFunction.invokeWhenNotIgnored() {
     if (isNotIgnored) invoke() }
 
-private fun <R> (suspend CoroutineScope.() -> R).toStep() = suspend { invoke(annotatedOrSchedulerScope()) }
+private fun <R> (suspend CoroutineScope.() -> R).toStep(): suspend () -> R = suspend { invoke(annotatedOrSchedulerScope()) }
 
 private fun Step.toCoroutine(): CoroutineStep = { this@toCoroutine() }
 
@@ -1797,106 +1805,106 @@ private annotation class Enlisted
 @Target(CONSTRUCTOR, FUNCTION, PROPERTY, PROPERTY_GETTER, PROPERTY_SETTER)
 private annotation class Unlisted
 
-internal val AnyStep.isScheduledFirst
+internal val AnyStep.isScheduledFirst: Boolean
     get() = hasAnnotationType<First>()
 
-internal val AnyStep.isScheduledLast
+internal val AnyStep.isScheduledLast: Boolean
     get() = hasAnnotationType<Last>()
 
-val AnyKClass.tag
+val AnyKClass.tag: Tag?
     get() = annotations.find(::filterIsTag).asType<Tag>()
 
-val AnyKCallable.tag
+val AnyKCallable.tag: Tag?
     get() = annotations.find(::filterIsTag).asType<Tag>()
 
-private val AnyKCallable.annotatedScope
+private val AnyKCallable.annotatedScope: Scope?
     get() = annotations.find(::filterIsScope).asType<Scope>()
 
-private val AnyKCallable.launchScope
+private val AnyKCallable.launchScope: LaunchScope?
     get() = annotations.find(::filterIsLaunchScope).asType<LaunchScope>()
 
-private val AnyKCallable.event
+private val AnyKCallable.event: Event?
     get() = annotations.find(::filterIsEvent).asType<Event>()
 
-private val AnyKCallable.events
+private val AnyKCallable.events: List<Event>
     get() = annotations.filterIsInstance<Event>()
 
-private val AnyKCallable.isItemized
+private val AnyKCallable.isItemized: Boolean
     get() = hasAnnotationType<Itemize>()
 
-internal val Any?.tag
+internal val Any?.tag: Tag
     get() = asReference().annotations.filterIsInstance<Tag>().last()
 
-internal val Any?.tags
+internal val Any?.tags: List<Tag>
     get() = asReference().annotations.filterIsInstance<Tag>()
 
-internal val Any.isKept
+internal val Any.isKept: Boolean
     get() = hasAnnotationType<Kept>()
 
-internal val Any.isInternal
+internal val Any.isInternal: Boolean
     get() = hasAnnotationType<Internal>()
 
-internal val Any?.isInternalFirst
+internal val Any?.isInternalFirst: Boolean
     get() = hasNullableAnnotationType<Internal.First>()
 
-internal val Any?.isInternalLast
+internal val Any?.isInternalLast: Boolean
     get() = hasNullableAnnotationType<Internal.Last>()
 
-internal val Any.isImplicit
+internal val Any.isImplicit: Boolean
     get() = hasAnnotationType<Implicit>()
 
-internal val Any.isExposed
+internal val Any.isExposed: Boolean
     get() = hasAnnotationType<Exposed>()
 
-internal val Any.isReceived
+internal val Any.isReceived: Boolean
     get() = hasAnnotationType<Received>()
 
-private val Any.isIgnored
+private val Any.isIgnored: Boolean
     get() = hasAnnotationType<Ignore>()
 
-private val Any.isNotIgnored
+private val Any.isNotIgnored: Boolean
     get() = hasNoAnnotationType<Ignore>()
 
-private val Any.isEnlisted
+private val Any.isEnlisted: Boolean
     get() = hasAnnotationType<Enlisted>()
 
-private val Any.isUnlisted
+private val Any.isUnlisted: Boolean
     get() = hasAnnotationType<Unlisted>()
 
 // TODO - pick up from temporarily itemized set
 
-private fun <T> T.applyAnnotation(type: AnnotationClass) = this
+private fun <T> T.applyAnnotation(type: AnnotationClass): T = this
 
-internal fun <T> T.applyKeptOnce() =
+internal fun <T> T.applyKeptOnce(): T =
     runWhen({ hasNoNullableAnnotationType<Kept>() }) { applyAnnotation(Kept::class) }
 
-internal fun <T> T.applyInternalOnce() =
+internal fun <T> T.applyInternalOnce(): T =
     runWhen({ hasNoNullableAnnotationType<Internal>() }) { applyAnnotation(Internal::class) }
 
-internal fun <T> T.applyInternalFirstOnce() =
+internal fun <T> T.applyInternalFirstOnce(): T =
     runWhen({ hasNoNullableAnnotationType<Internal.First>() }) { applyAnnotation(Internal.First::class) }
 
-internal fun <T> T.applyInternalLastOnce() =
+internal fun <T> T.applyInternalLastOnce(): T =
     runWhen({ hasNoNullableAnnotationType<Internal.Last>() }) { applyAnnotation(Internal.Last::class) }
 
-internal fun <T> T.applyIgnoreOnce() =
+internal fun <T> T.applyIgnoreOnce(): T =
     runWhen({ hasNoNullableAnnotationType<Ignore>() }) { applyAnnotation(Ignore::class) }
 
-internal fun <T> T.applyEnlistedOnce() =
+internal fun <T> T.applyEnlistedOnce(): T =
     runWhen({ hasNoNullableAnnotationType<Enlisted>() }) { applyAnnotation(Enlisted::class) }
 
-internal fun <T> T.applyUnlistedOnce() =
+internal fun <T> T.applyUnlistedOnce(): T =
     runWhen({ hasNoNullableAnnotationType<Unlisted>() }) { applyAnnotation(Unlisted::class) }
 
-internal fun filterIsSynchronous(it: Any) = it.typeIs<Synchronous, _>()
+internal fun filterIsSynchronous(it: Any): Boolean = it.typeIs<Synchronous, _>()
 
-internal fun filterIsSynchronized(it: Any) = it.typeIs<Synchronized, _>()
+internal fun filterIsSynchronized(it: Any): Boolean = it.typeIs<Synchronized, _>()
 
-internal fun Any?.asCoroutineScope() = asType<CoroutineScope>()
-internal fun CoroutineContext.asSchedulerContext() = asTypeUnsafe<SchedulerContext>()
-internal fun Any?.asWork() = asType<Work>()
-private fun Any?.asItem() = asType<AnyItem>()
-private fun Any?.asTag() = asType<Tag>()
+internal fun Any?.asCoroutineScope(): CoroutineScope? = asType<CoroutineScope>()
+internal fun CoroutineContext.asSchedulerContext(): SchedulerContext = asTypeUnsafe<SchedulerContext>()
+internal fun Any?.asWork(): Work? = asType<Work>()
+private fun Any?.asItem(): AnyItem? = asType<AnyItem>()
+private fun Any?.asTag(): Tag? = asType<Tag>()
 
 private typealias SchedulerScopeWork = SchedulerScope.Companion.() -> Unit
 private typealias SchedulerWork = Scheduler.() -> Unit
@@ -1910,7 +1918,7 @@ fun interface AnySchedulerFunction : suspend (CoroutineScope, Any?, Job) -> Any?
 internal typealias SchedulerPrediction = suspend CoroutineScope.(Any?, Job) -> PredictionIdentityType
 fun interface SchedulerPredicate : suspend (CoroutineScope, Any?, Job) -> PredicateIdentityType
 
-internal typealias SchedulerStepIdentityType = Unit
+internal typealias SchedulerStepIdentityType = Any?
 
 internal typealias JobContinuation = suspend (Any?, Any?) -> JobContinuationDefaultIdentityType
 internal typealias AnyJobContinuation = suspend (Any?, Any?) -> JobContinuationIdentityType
@@ -1934,7 +1942,7 @@ private typealias PropertyBuildConditionIdentityType = Any?
 private typealias AnyItem = Item<*>
 internal typealias FunctionSet = MutableSet<FunctionItem>
 internal typealias FunctionSetPointer = () -> FunctionSet
-private typealias FunctionItem = TagTypeToAnyPair
+internal typealias FunctionItem = TagTypeToAnyPair
 private typealias TagTypeToAnyPair = Pair<TagTypePointer, Any>
 
 internal typealias CoroutineFunction = (CoroutineStep) -> Any?
@@ -1955,7 +1963,7 @@ private typealias AnyFlowCollector = FlowCollector<Any?>
 private typealias Self = SchedulerScope.Task<*>
 private typealias TaskInput = Any?
 
-internal fun Context.registerReceiver(filter: IntentFilter) =
+internal fun Context.registerReceiver(filter: IntentFilter): Intent? =
     registerReceiver(this, receiver, filter, null,
         clock?.alsoStartAsync()?.handler,
         RECEIVER_EXPORTED)
@@ -1966,11 +1974,11 @@ internal fun getTag(stage: ContextStep): TagType = returnTag(stage)!!
 private fun getTag(callback: Runnable): TagType? = returnTag(callback)
 private fun getTag(msg: Message): TagType? = returnTag(msg)
 
-private fun combineTags(tag: TagType, self: TagType?) =
+private fun combineTags(tag: TagType, self: TagType?): TagType =
     if (self === null) tag
     else reduceTags(tag, TAG_DOT, self.toTagType())
 
-internal fun reduceTags(vararg tag: TagType) =
+internal fun reduceTags(vararg tag: TagType): TagType =
     (if (TagType::class.isNumber)
         tag.map(TagType::toInt)
             .reduce(Int::processTag)
@@ -1978,25 +1986,25 @@ internal fun reduceTags(vararg tag: TagType) =
         tag.map(TagType::toString)
             .reduce(String::processTag)).asTagTypeUnsafe()
 
-internal fun returnTag(it: Any?) = it.asReference().tag?.id
+internal fun returnTag(it: Any?): TagType? = it.asReference().tag?.id
 
-private fun Any?.hashTag() = hashCode().toTagType()
+private fun Any?.hashTag(): TagType = hashCode().toTagType()
 
-private fun Number.toTagType() =
+private fun Number.toTagType(): TagType =
     resultUnless({ TagType::class.isNumber }, Any::toString).asTagTypeUnsafe()
 
-private fun String.toTagType() =
+private fun String.toTagType(): TagType =
     resultWhen({ TagType::class.isNumber }, String::toInt).asTagTypeUnsafe()
 
-private val KClass<TagType>.isNumber
+private val KClass<TagType>.isNumber: Boolean
     get() = TagType::class isNotObject String::class
 
-private val KClass<TagType>.isString
+private val KClass<TagType>.isString: Boolean
     get() = (TagType::class isObject String::class) or
             (TagType::class isObject CharSequence::class)
 
-private fun Number.processTag(it: Number) = toInt().plus(it.toInt())
-private fun String.processTag(it: String) = plus(it)
+private fun Number.processTag(it: Number): Int = toInt().plus(it.toInt())
+private fun String.processTag(it: String): String = plus(it)
 
 private typealias TaggedProvider = Pair<Provider, Tag>
 private typealias TaggedCallableProvider = Pair<CallableProvider, Tag>
@@ -2013,24 +2021,24 @@ internal typealias ChannelType = Short
 internal typealias TransitType = Short
 private typealias Transit = TransitType?
 
-internal fun Array<out Tag>.mapToTagArray() = mapToTypedArray { it.id }
-internal fun Array<out Path>.mapToTagArray() = mapToTypedArray { it.id }
+internal fun Array<out Tag>.mapToTagArray(): Array<TagType> = mapToTypedArray { it.id }
+internal fun Array<out Path>.mapToTagArray(): Array<PathType> = mapToTypedArray { it.id }
 
-internal fun Number.toLevel() = toByte()
-internal fun Number?.toChannel() = asType<ChannelType>()
-internal fun Number?.toTransit() = asType<TransitType>()
+internal fun Number.toLevel(): Byte = toByte()
+internal fun Number?.toChannel(): ChannelType? = asType<ChannelType>()
+internal fun Number?.toTransit(): TransitType? = asType<TransitType>()
 internal fun Number?.toCoordinateTarget(): AnyKClass = Any::class
-internal fun Number?.toCoordinateKey() = asType<KeyType>()
+internal fun Number?.toCoordinateKey(): KeyType? = asType<KeyType>()
 
-private fun Any?.asTagType() = asType<TagType>()
-private fun Any?.asTagTypeUnsafe() = asTypeUnsafe<TagType>()
+private fun Any?.asTagType(): TagType? = asType<TagType>()
+private fun Any?.asTagTypeUnsafe(): TagType = asTypeUnsafe<TagType>()
 
 internal const val no_channel: ChannelType = 0
 internal const val no_transit: TransitType = 0
 
 internal val EMPTY_COROUTINE: CoroutineStep = {}
-internal val EMPTY_STEP = suspend {}
-private val EMPTY_WORK = {}
+internal val EMPTY_STEP: Step = suspend {}
+private val EMPTY_WORK: Work = {}
 
 private typealias CoroutineKFunction = KFunction<CoroutineStep?>
 private typealias ResolverKClass = KClass<out Resolver>

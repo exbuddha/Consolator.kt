@@ -2,7 +2,9 @@ package data.consolator.entity
 
 import androidx.room.*
 import data.consolator.*
+import android.annotation.SuppressLint
 
+@SuppressLint("ParcelCreator")
 open class NetworkEntity(
     @ColumnInfo(name = NETWORK_ID)
     open val nid: Int,

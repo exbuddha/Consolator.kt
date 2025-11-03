@@ -12,9 +12,10 @@ import androidx.fragment.app.Fragment
 import ctx.consolator.ReferredContext
 import ctx.consolator.WeakContext
 import iso.consolator.Resolver
-import iso.consolator.UnitKFunction
 import iso.consolator.asType
-import iso.consolator.commit
+import iso.consolator.commitToConfigurationChangeManager
+import iso.consolator.commitToLocalesChangeManager
+import iso.consolator.commitToNightModeChangeManager
 import iso.consolator.foregroundLifecycleOwner
 import iso.consolator.isPermissionGranted
 import iso.consolator.withSchedulerScope
@@ -23,9 +24,9 @@ import iso.consolator.annotation.Tag
 
 @Scope
 abstract class SchedulerActivity : AppCompatActivity(), ReferredContext {
-    /** Flag indicating whether or not network callback is enabled. */
+    /** Flag indicating whether network callback is enabled. */
     abstract val isNetworkCallbackEnabled: Boolean
-    /** Flag indicating whether or not network callback is disabled. */
+    /** Flag indicating whether network callback is disabled. */
     abstract val isNetworkCallbackDisabled: Boolean
 
     /** Starts network callbacks. */
@@ -49,7 +50,7 @@ abstract class SchedulerActivity : AppCompatActivity(), ReferredContext {
     abstract fun Bundle?.disableNetworkCallbacks(): Bundle
 
     /** The foreground fragment or `null` if it doesn't exist. */
-    open val fragment
+    open val fragment: Fragment?
         get() = foregroundLifecycleOwner.asType<Fragment>()
 
     /**
@@ -148,53 +149,41 @@ abstract class SchedulerActivity : AppCompatActivity(), ReferredContext {
         super.onSaveInstanceState(outState)
     }
 
-    /** @suppress */
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
-        asActivityCommit<ConfigurationChangeManager>(
-            ::onConfigurationChanged, newConfig) }
+        commitToConfigurationChangeManager(newConfig)
+    }
 
-    /** @suppress */
     override fun onNightModeChanged(mode: Int) {
         super.onNightModeChanged(mode)
-        asActivityCommit<NightModeChangeManager>(
-            ::onNightModeChanged, mode) }
+        commitToNightModeChangeManager(mode)
+    }
 
-    /** @suppress */
     override fun onLocalesChanged(locales: LocaleListCompat) {
         super.onLocalesChanged(locales)
-        asActivityCommit<LocalesChangeManager>(
-            ::onLocalesChanged, locales) }
+        commitToLocalesChangeManager(locales)
+    }
 
-    /** @suppress */
     abstract inner class ConfigurationChangeManager : ActivityChangeResolver()
-    /** @suppress */
     abstract inner class NightModeChangeManager : ActivityChangeResolver()
-    /** @suppress */
     abstract inner class LocalesChangeManager : ActivityChangeResolver()
 
     abstract inner class ActivityChangeResolver : Resolver {
-        override fun commit(vararg context: Any?) = TODO()
+        override fun commit(vararg context: Any?): Unit? = TODO()
     }
 
     protected companion object {
-        /** Checks whether or not network state access permission is granted in manifest file. */
-        val Context.isNetworkStateAccessPermitted
+        /** Checks whether network state access permission is granted in manifest file. */
+        val Context.isNetworkStateAccessPermitted: Boolean
             get() = isPermissionGranted(ACCESS_NETWORK_STATE)
 
-        /** Checks whether or not internet access permission is granted in manifest file. */
-        val Context.isInternetAccessPermitted
+        /** Checks whether internet access permission is granted in manifest file. */
+        val Context.isInternetAccessPermitted: Boolean
             get() = isPermissionGranted(INTERNET)
     }
 
-    /** @suppress */
-    private inline fun <reified R : Resolver> asActivityCommit(member: UnitKFunction, vararg context: Any?) =
-        asActivity().commit<R>(member, *context)
+    private fun asActivity(): Activity = this as Activity
 
-    /** @suppress */
-    private fun asActivity() = this as Activity
-
-    /** @suppress */
     final override var ref: WeakContext? = null
         get() = field.receive(this).also { field = it }
 }

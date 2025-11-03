@@ -21,4 +21,4 @@ annotation class LaunchContext(
     }
 }
 
-internal fun filterIsLaunchContext(it: Any) = it.typeIs<LaunchContext, _>()
+internal fun filterIsLaunchContext(it: Any): Boolean = it.typeIs<LaunchContext, _>()

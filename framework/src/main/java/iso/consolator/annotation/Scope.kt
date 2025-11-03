@@ -14,4 +14,4 @@ annotation class Scope(
     val type: KClass<out CoroutineScope> = Scheduler::class,
     val provider: AnyKClass = Any::class)
 
-internal fun filterIsScope(it: Any) = it.typeIs<Scope, _>()
+internal fun filterIsScope(it: Any): Boolean = it.typeIs<Scope, _>()

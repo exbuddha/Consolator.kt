@@ -2,8 +2,10 @@ package data.consolator.entity
 
 import androidx.room.*
 import data.consolator.*
+import android.annotation.SuppressLint
 
 @Entity(tableName = ThreadEntity.TABLE)
+@SuppressLint("ParcelCreator")
 internal data class ThreadEntity(
     @ColumnInfo(name = RUNTIME_ID)
     val rid: Long,

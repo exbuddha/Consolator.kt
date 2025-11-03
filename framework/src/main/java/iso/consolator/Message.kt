@@ -5,6 +5,7 @@ package iso.consolator
 
 import android.os.Message
 import kotlin.reflect.*
+import iso.consolator.annotation.Tag
 import iso.consolator.annotation.TagType
 
 internal fun message(callback: Runnable): Message = TODO()
@@ -15,7 +16,7 @@ internal fun Message.detach(): Message? = null
 
 private fun Message.close() {}
 
-internal fun FunctionSet.saveMessage(self: AnyKCallable, tag: TagType) =
+internal fun FunctionSet.saveMessage(self: AnyKCallable, tag: TagType): Tag? =
     save(self, tag, Item.Type.Message)
 
 internal fun Message.attachNextConjunctionToMessage(target: Message): Message = TODO()
@@ -44,13 +45,13 @@ internal fun Message.attachTimeoutConclusionToMessage(target: Message): Message 
 
 private fun Message.lastMarkedMessage(): Message = TODO()
 
-private fun Message.asCoroutine() = callback.asCoroutine()
+private fun Message.asCoroutine(): CoroutineStep = callback.asCoroutine()
 
-private fun Message.asStep() = callback.asStep()
+private fun Message.asStep(): Step = callback.asStep()
 
-private fun Message.asRunnable() = callback
+private fun Message.asRunnable(): Runnable = callback
 
-internal fun Any?.asMessage() = asType<Message>()
+internal fun Any?.asMessage(): Message? = asType<Message>()
 
 private typealias MessagePointer = () -> Message
 private typealias MessageFunction = (Message) -> Any?

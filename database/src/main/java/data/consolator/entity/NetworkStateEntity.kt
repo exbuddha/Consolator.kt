@@ -2,8 +2,10 @@ package data.consolator.entity
 
 import androidx.room.*
 import data.consolator.*
+import android.annotation.SuppressLint
 
 @Entity(tableName = NetworkStateEntity.TABLE)
+@SuppressLint("ParcelCreator")
 data class NetworkStateEntity(
     @ColumnInfo(name = IS_CONNECTED)
     var isConnected: Boolean,

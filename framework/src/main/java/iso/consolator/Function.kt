@@ -101,13 +101,18 @@ sealed interface ParameterDefinition {
     }
 }
 
-internal fun Any?.asAnyFunction() = asType<AnyFunction>()
-internal fun Any?.asAnyToAnyFunction() = asType<AnyToAnyFunction>()
+internal fun Any?.asAnyFunction(): AnyFunction? = asType<AnyFunction>()
+internal fun Any?.asAnyToAnyFunction(): AnyToAnyFunction? = asType<AnyToAnyFunction>()
 
+internal typealias UnitFunction = () -> Unit
 internal typealias AnyFunction = () -> Any?
 internal typealias AnyToAnyFunction = (Any?) -> Any?
 internal typealias AnyClassStringFunction = Any?.() -> String
 internal typealias AnyClassAnyToAnyFunction = Any?.(Any?) -> Any?
+internal typealias BooleanSuspendFunction = suspend () -> Boolean
+internal typealias LongSuspendFunction = suspend () -> Long
+internal typealias UnitSuspendFunction = suspend () -> Unit
+internal typealias ObjectSuspendFunction = suspend () -> Any
 internal typealias AnySuspendFunction = suspend () -> Any?
 internal typealias AnyToAnySuspendFunction = suspend (Any?) -> Any?
 internal typealias AnyClassAnyToAnySuspendFunction = suspend Any?.(Any?) -> Any?

@@ -1,29 +1,35 @@
 package iso.consolator.component
 
 import android.app.Application
-import android.content.Context
 import android.content.SharedPreferences
 import ctx.consolator.UniqueContext
-import iso.consolator.asStringCounted
-import iso.consolator.commit
-import iso.consolator.rejectWithImplementationRestriction
-import iso.consolator.resultWhen
-import ctx.consolator.now
 import iso.consolator.AnyCoroutineStep
 import iso.consolator.AnyKClass
 import iso.consolator.ObjectProvider
+import iso.consolator.ResolverTransactionIdentityType
 import iso.consolator.Time
+import iso.consolator.asStringCounted
+import iso.consolator.commitToMemoryManager
+import iso.consolator.disableLogger
+import iso.consolator.rejectWithImplementationRestriction
+import iso.consolator.resultWhen
+import iso.consolator.touchContext
+import ctx.consolator.now
 import iso.consolator.annotation.Key
 import kotlin.reflect.KFunction
 
 abstract class SchedulerApplication : Application(), ObjectProvider, UniqueContext.Instance {
+    init {
+        disableLogger()
+        touchContext() }
+
     /** Unique context start time. */
     @Key(0)
-    override var uid = now()
+    override var uid: Time = now()
 
-    /** Sets whether or not the base service is enabled. */
+    /** Sets whether the base service is enabled. */
     @Key(1)
-    open var isSchedulerServiceEnabled = true
+    open var isSchedulerServiceEnabled: Boolean = true
 
     /**
      * Retrieves the last uncaught exception type from shared preferences.
@@ -64,38 +70,53 @@ abstract class SchedulerApplication : Application(), ObjectProvider, UniqueConte
      */
     abstract fun getLastUncaughtExceptionWasMainThread(): Boolean?
 
-    /** @suppress */
     override fun onTrimMemory(level: Int) {
         super.onTrimMemory(level)
-        (this as Context)
-        .commit<MemoryManager>(
-            ::onTrimMemory, level) }
+        commitToMemoryManager(level)
+    }
 
     /** Commits step for execution to the scheduler. */
-    fun commit(step: AnyCoroutineStep) = iso.consolator.commit(step = step)
+    fun commit(step: AnyCoroutineStep): ResolverTransactionIdentityType =
+        iso.consolator.commit(step = step)
 
-    // use iterator as optional context parameter in order to use its next property getter
-    protected tailrec fun <T, K : Any, V> SharedPreferences.Editor.putIteration(item: T, function: SharedPreferences.Editor.(String, V) -> Any? = { k, v -> putString(k, v.toString()) }, vararg map: Pair<K, (T) -> V>, next: (T) -> T?, index: Int = 0, depth: Int = 0) {
-        fun put(str: K, value: V) =
-            function(str.counted(index), value)
-        map.forEach {
-            val (key, value) = it
-            put(key, value(item)) }
-        val item = next(item) ?: return /* in iterator context, call hasNext() implicitly */
+    protected tailrec fun <T, K : Any, V> SharedPreferences.Editor.putIteration(item: T, function: SharedPreferences.Editor.(String, V) -> Any? = ::putKeyValuePairAsString, vararg map: Pair<K, (T) -> V>, next: (T) -> T?, index: Int = 0, depth: Int = 0) {
+        putItem(item, function, *map, index = index)
+        val item = next(item) ?: return
         val depth = depth - 1
         if (depth == 0) return
         putIteration(item, function, *map, next = next, index = index + 1, depth = depth) }
 
-    protected fun SharedPreferences.getCountedStringOrNull(str: String, index: Int = 0) =
+    context(iterator: Iterator<T>)
+    protected tailrec fun <T, K : Any, V> SharedPreferences.Editor.putIteration(function: SharedPreferences.Editor.(String, V) -> Any? = ::putKeyValuePairAsString, vararg map: Pair<K, (T) -> V>, index: Int = 0, depth: Int = 0) {
+        if (depth == 0) return
+        val item = with(iterator) { if (hasNext()) next() else return }
+        putItem(item, function, *map, index = index)
+        putIteration(function, *map, index = index + 1, depth = depth - 1) }
+
+    private fun <T, K : Any, V> SharedPreferences.Editor.putItem(item: T, function: SharedPreferences.Editor.(String, V) -> Any?, vararg map: Pair<K, (T) -> V>, index: Int) {
+        fun put(str: K, value: V) =
+            function(str.counted(index), value)
+        map.forEach {
+            val (key, value) = it
+            put(key, value(item)) } }
+
+    private fun <V> putKeyValuePairAsString(editor: SharedPreferences.Editor, key: String, value: V): SharedPreferences.Editor =
+        editor.putString(key, value.toString())
+
+    protected fun SharedPreferences.getCountedStringOrNull(str: String, index: Int = 0): String? =
         getString(str.counted(index), null)
 
-    protected fun <R> SharedPreferences.getUncountedOrNull(str: String, function: KFunction<R>, default: R) =
+    protected fun <R> SharedPreferences.getUncountedOrNull(str: String, function: KFunction<R>, default: R): R? =
         resultWhen({ contains(str) }) { function.call(this, str, default) }
 
-    private fun Any.counted(n: Int) = asStringCounted(n)
+    private fun Any.counted(n: Int): String = asStringCounted(n)
 
-    override fun provide(type: AnyKClass) = when (type) {
+    override fun provide(type: AnyKClass): MemoryManager =
+        when (type) {
         MemoryManager::class ->
-            object : MemoryManager {}
-        else -> rejectWithImplementationRestriction() }
+            object : MemoryManager {
+                override fun commit(vararg context: Any?) {}
+            }
+        else ->
+            rejectWithImplementationRestriction() }
 }

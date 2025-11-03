@@ -21,22 +21,22 @@ interface ObjectType<out T : Any> {
     val type: KClass<out T>
 }
 
-internal fun LifecycleOwner.provide(cls: AnyKClass) =
+internal fun LifecycleOwner.provide(cls: AnyKClass): Any =
     asAnyProvide(cls)
 
-internal fun Activity.provide(cls: AnyKClass) =
+internal fun Activity.provide(cls: AnyKClass): Any =
     asAnyProvide(cls)
 
-internal fun Context.provide(cls: AnyKClass) =
+internal fun Context.provide(cls: AnyKClass): Any =
     asAnyProvide(cls)
 
-internal fun Any.provide(cls: AnyKClass) =
+internal fun Any.provide(cls: AnyKClass): Any =
     asObjectProvider()!!.provide(cls)
 
-internal fun Any?.asContextProvide(cls: AnyKClass) =
+internal fun Any?.asContextProvide(cls: AnyKClass): Any? =
     asContext()?.provide(cls)
 
-internal fun Any.asAnyProvide(cls: AnyKClass) =
+internal fun Any.asAnyProvide(cls: AnyKClass): Any =
     provide(cls)
 
 sealed interface Addressed<R> {
@@ -49,8 +49,8 @@ sealed interface Tagged {
     fun setTag(tag: TagType): Tagged
 }
 
-fun Any?.asFunctionProvider() = asType<FunctionProvider>()
-fun Any?.asObjectProvider() = asType<ObjectProvider>()
+fun Any?.asFunctionProvider(): FunctionProvider? = asType<FunctionProvider>()
+fun Any?.asObjectProvider(): ObjectProvider? = asType<ObjectProvider>()
 
 internal typealias Provider = (AnyKClass) -> Any
 internal typealias CallableProvider = (Array<out TagType>) -> AnyKCallable

@@ -10,4 +10,4 @@ interface ViewProvider : PropertyArray<Int> {
     override operator fun <T> PropertyArray<Int>.get(key: Int?): T
 }
 
-internal fun Any.asViewState() = this as ViewState
+internal fun Any.asViewState(): ViewState = this as ViewState

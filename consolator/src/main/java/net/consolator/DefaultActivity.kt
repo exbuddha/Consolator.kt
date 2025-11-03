@@ -10,7 +10,7 @@ import iso.consolator.annotation.*
 import iso.consolator.component.SchedulerActivity
 import iso.consolator.component.SchedulerFragment
 import view.consolator.*
-import android.annotation.SuppressLint
+import kotlin.reflect.*
 
 /**
  * Default scheduler activity handles base fragment creation.
@@ -83,17 +83,17 @@ open class DefaultActivity : BaseActivity(), ContentLayoutReceiver, LifecyclePro
     @Key(3)
     internal inline fun <reified F : SchedulerFragment> addContainerView(@IdRes containerViewId: Int, reorderingAllowed: Boolean = true, visible: Boolean = true, savedInstanceState: Bundle? = null) {
         if (containerViewId != 0)
-        supportFragmentManager.commit {
-            setReorderingAllowed(reorderingAllowed)
-            add<F>(containerViewId, args = savedInstanceState)
-            setVisible(visible) } }
+            supportFragmentManager.commit {
+                setReorderingAllowed(reorderingAllowed)
+                add<F>(containerViewId, args = savedInstanceState)
+                setVisible(visible) } }
 
     /**
      * Sets layout resource ID in saved instance state.
      *
      * @receiver the saved instance state.
      */
-    fun Bundle?.enableLayoutResource(@LayoutRes layoutResId: Int) =
+    fun Bundle?.enableLayoutResource(@LayoutRes layoutResId: Int): Bundle =
         requireLastSavedInstanceState()
         .applyPutInt(LAYOUT_RES_KEY, layoutResId)
 
@@ -102,7 +102,7 @@ open class DefaultActivity : BaseActivity(), ContentLayoutReceiver, LifecyclePro
      *
      * @receiver the saved instance state.
      */
-    fun Bundle?.disableLayoutResource() =
+    fun Bundle?.disableLayoutResource(): Bundle =
         requireLastSavedInstanceState()
         .applyRemove(LAYOUT_RES_KEY)
 
@@ -111,7 +111,7 @@ open class DefaultActivity : BaseActivity(), ContentLayoutReceiver, LifecyclePro
      *
      * @receiver the saved instance state.
      */
-    fun Bundle?.enableContainerView(@IdRes containerViewId: Int) =
+    fun Bundle?.enableContainerView(@IdRes containerViewId: Int): Bundle =
         requireLastSavedInstanceState()
         .applyPutInt(CONTAINER_VIEW_KEY, containerViewId)
 
@@ -120,7 +120,7 @@ open class DefaultActivity : BaseActivity(), ContentLayoutReceiver, LifecyclePro
      *
      * @receiver the saved instance state.
      */
-    fun Bundle?.disableContainerView() =
+    fun Bundle?.disableContainerView(): Bundle =
         requireLastSavedInstanceState()
         .applyRemove(CONTAINER_VIEW_KEY)
 
@@ -129,7 +129,7 @@ open class DefaultActivity : BaseActivity(), ContentLayoutReceiver, LifecyclePro
      *
      * @receiver the saved instance state.
      */
-    fun Bundle?.enableContainerVisible(visible: Boolean = true) =
+    fun Bundle?.enableContainerVisible(visible: Boolean = true): Bundle =
         requireLastSavedInstanceState()
         .applyPutBoolean(CONTAINER_VISIBLE_KEY, visible)
 
@@ -138,26 +138,24 @@ open class DefaultActivity : BaseActivity(), ContentLayoutReceiver, LifecyclePro
      *
      * @receiver the saved instance state.
      */
-    fun Bundle?.disableContainerVisible() =
+    fun Bundle?.disableContainerVisible(): Bundle =
         requireLastSavedInstanceState()
         .applyRemove(CONTAINER_VISIBLE_KEY)
 
     override lateinit var model: ViewModel
 
-    /** @suppress */
     internal abstract inner class ConfigurationChangeManager : SchedulerActivity.ConfigurationChangeManager()
-    /** @suppress */
     internal abstract inner class NightModeChangeManager : SchedulerActivity.NightModeChangeManager()
-    /** @suppress */
     internal abstract inner class LocalesChangeManager : SchedulerActivity.LocalesChangeManager()
 
-    override var isCrossObjectProviderEnabled = true
+    override var isCrossObjectProviderEnabled: Boolean = true
         get() = isForegroundProvider and field
 
-    override var isCrossFunctionProviderEnabled = true
+    override var isCrossFunctionProviderEnabled: Boolean = true
         get() = isForegroundProvider and field
 
-    override fun provide(type: AnyKClass) = when (type) {
+    override fun provide(type: AnyKClass): Resolver =
+        when (type) {
         SchedulerActivity.ConfigurationChangeManager::class ->
             object : ConfigurationChangeManager() {}
         SchedulerActivity.NightModeChangeManager::class ->
@@ -167,8 +165,8 @@ open class DefaultActivity : BaseActivity(), ContentLayoutReceiver, LifecyclePro
         else ->
             crossProvide(type) as Resolver }
 
-    override fun <R> provide(vararg tag: TagType) =
-        crossProvide<R>(*tag)
+    override fun <R> provide(vararg tag: TagType): KCallable<R> =
+        crossProvide(*tag)
 
     internal companion object {
         /** Bundle key for the layout resource ID. */

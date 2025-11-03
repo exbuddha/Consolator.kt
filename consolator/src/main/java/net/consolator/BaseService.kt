@@ -2,6 +2,7 @@ package net.consolator
 
 import android.app.*
 import android.content.*
+import android.os.*
 import iso.consolator.*
 import java.lang.ref.*
 
@@ -13,12 +14,12 @@ internal open class BaseService : Service(), BaseServiceScope {
         service = this
     }
 
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int) =
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int =
         intent.invoke(flags, startId,
             super.onStartCommand(intent, flags, startId))
         ?: START_NOT_STICKY
 
-    override fun onBind(intent: Intent?) = null
+    override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onDestroy() {
         service = null

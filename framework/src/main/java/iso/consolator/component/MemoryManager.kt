@@ -5,16 +5,20 @@ import iso.consolator.Lock
 import iso.consolator.Resolver
 import iso.consolator.State
 import iso.consolator.asAnyFunction
+import iso.consolator.asTypeUnsafe
 import iso.consolator.invokeWhenNotIgnored
 import iso.consolator.isFalse
 import iso.consolator.isNot
 import iso.consolator.setInstance
 
 interface MemoryManager : Resolver {
+    context(_: Any)
+    fun commit(level: Int) = Unit
+
     fun expire(property: AnyKMutableProperty) {
         // must be strengthened by connecting to other expiry sets
         forEach { alive ->
-        if ((alive(property).isFalse()) and
+        if (alive(property).isFalse() and
             (State of property isNot Lock.Closed))
             property.expire() } }
 
@@ -43,11 +47,13 @@ interface MemoryManager : Resolver {
             get() = 0
     }
 
-    override fun commit(vararg context: Any?) =
+    override fun commit(vararg context: Any?): Unit? =
         context.lastOrNull().asAnyFunction()?.invokeWhenNotIgnored()
 }
 
-internal fun AnyKMutableProperty.expire() = setInstance(null)
+internal fun Any.asMemoryManager(): MemoryManager = asTypeUnsafe<MemoryManager>()
+
+internal fun AnyKMutableProperty.expire(): Unit = setInstance(null)
 
 private typealias Lifetime = (AnyKMutableProperty) -> Boolean?
 private typealias LifetimeElements = Collection<Lifetime>

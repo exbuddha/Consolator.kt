@@ -8,32 +8,32 @@ import kotlin.annotation.AnnotationTarget.*
 
 // coordinates with capture function queue for scheduling purposes
 internal sealed interface Synchronizer<L> : Coordinator<L, L> {
-    override fun <R> synchronize(lock: L?, block: () -> R) =
+    override fun <R> synchronize(lock: L?, block: () -> R): R =
         synchronized(lock!!, block)
 }
 
 private fun synchronizer(block: SynchronizerStep) {}
 
-private inline fun <L, reified R : Any> Synchronizer<L>.synchronize(lock: L?, crossinline predicate: () -> Boolean, crossinline block: () -> R) =
+private inline fun <L, reified R : Any> Synchronizer<L>.synchronize(lock: L?, crossinline predicate: () -> Boolean, crossinline block: () -> R): R? =
     synchronize(lock) {
         if (predicate()) block()
         else Unit.nullType<R>() }
 
-private inline fun <L : Any> Synchronizer<L>.synchronize(lock: L, crossinline predicate: (L) -> Boolean, crossinline block: Work) =
+private inline fun <L : Any> Synchronizer<L>.synchronize(lock: L, crossinline predicate: (L) -> Boolean, crossinline block: Work): Unit =
     synchronize(lock) {
         if (predicate(lock)) block() }
 
 @Suppress("NOTHING_TO_INLINE")
-private inline fun <L : Any>  Synchronizer<L>.synchronizeByFunction(lock: L, predicate: BooleanKFunction, noinline block: Work) =
+private inline fun <L : Any>  Synchronizer<L>.synchronizeByFunction(lock: L, predicate: BooleanKFunction, noinline block: Work): Unit? =
     synchronize(lock, predicate::isTrue, block)
 
 internal sealed interface LiveStepSynchronizer<T> : Synchronizer<suspend () -> T>
 
-internal fun <L> Any.asSynchronizer() = asTypeUnsafe<Synchronizer<L>>()
+internal fun <L> Any.asSynchronizer(): Synchronizer<L> = asTypeUnsafe<Synchronizer<L>>()
 
 enum class Lock : LockState {
-    Open { override fun invoke() = TODO() /* callbacks group reconfiguration */ },
-    Closed { override fun invoke() = TODO() /* callbacks group reconfiguration */ };
+    Open { override fun invoke(): FunctionSet = TODO() /* callbacks group reconfiguration */ },
+    Closed { override fun invoke(): FunctionSet = TODO() /* callbacks group reconfiguration */ };
 
     @Retention(SOURCE)
     @Target(CLASS, CONSTRUCTOR, FUNCTION, PROPERTY, PROPERTY_GETTER, PROPERTY_SETTER)
@@ -55,21 +55,21 @@ internal inline fun <L : Any> commitAsync(lock: L, predicate: (L) -> Boolean, bl
         synchronized(lock) {
             if (predicate(lock)) block() } }
 
-internal inline fun commitAsyncUnless(lock: Any, noinline predicate: ObjectPredicate, block: Work) =
+internal inline fun commitAsyncUnless(lock: Any, noinline predicate: ObjectPredicate, block: Work): Unit =
     commitAsync(lock, predicate::not, block)
 
 internal inline fun commitAsyncByFunction(lock: Any, predicate: BooleanKFunction, block: Work) {
     if (predicate.call())
         commitAsync(lock, predicate::isTrue, block) }
 
-internal inline fun commitAsyncByFunctionUnless(lock: Any, predicate: BooleanKFunction, block: Work) =
+internal inline fun commitAsyncByFunctionUnless(lock: Any, predicate: BooleanKFunction, block: Work): Unit =
     commitAsyncByFunction(lock, predicate::isFalse, block)
 
 internal inline fun <R, S : R> commitAsyncForResult(lock: Any, predicate: ObjectPredicate, crossinline block: () -> R, crossinline fallback: () -> S? = { null }): R? {
     commitAsync(lock, predicate) { return block() }
     return fallback() }
 
-internal inline fun <R, S : R> commitAsyncForResultUnless(lock: Any, noinline predicate: ObjectPredicate, crossinline block: () -> R, crossinline fallback: () -> S? = { null }) =
+internal inline fun <R, S : R> commitAsyncForResultUnless(lock: Any, noinline predicate: ObjectPredicate, crossinline block: () -> R, crossinline fallback: () -> S? = { null }): R? =
     commitAsyncForResult(lock, predicate::not, block)
 
 internal inline fun <R> commitAsyncOrFallback(lock: Any, predicate: ObjectPredicate, crossinline block: () -> R, crossinline fallback: Work = {}): R? {
@@ -77,35 +77,35 @@ internal inline fun <R> commitAsyncOrFallback(lock: Any, predicate: ObjectPredic
     fallback()
     return null }
 
-internal inline fun <R> commitAsyncOrFallbackUnless(lock: Any, noinline predicate: ObjectPredicate, crossinline block: () -> R, crossinline fallback: Work = {}) =
+internal inline fun <R> commitAsyncOrFallbackUnless(lock: Any, noinline predicate: ObjectPredicate, crossinline block: () -> R, crossinline fallback: Work = {}): R? =
     commitAsyncOrFallback(lock, predicate::not, block, fallback)
 
-internal inline fun <R> commitLocked(lock: Any, predicate: ObjectPredicate, crossinline block: () -> R, crossinline fallback: BooleanWork = {}) =
+internal inline fun <R> commitLocked(lock: Any, predicate: ObjectPredicate, crossinline block: () -> R, crossinline fallback: BooleanWork = {}): R? =
     commitLockedForResult(lock, predicate, block) { fallback(it); null }
 
-internal inline fun <R> commitLockedUnless(lock: Any, noinline predicate: ObjectPredicate, crossinline block: () -> R, crossinline fallback: BooleanWork = {}) =
+internal inline fun <R> commitLockedUnless(lock: Any, noinline predicate: ObjectPredicate, crossinline block: () -> R, crossinline fallback: BooleanWork = {}): R? =
     commitLocked(lock, predicate::not, block)
 
-internal inline fun <R, S : R> commitLockedForResult(lock: Any, predicate: ObjectPredicate, crossinline block: () -> R, crossinline fallback: (Boolean) -> S? = { null }) =
+internal inline fun <R, S : R> commitLockedForResult(lock: Any, predicate: ObjectPredicate, crossinline block: () -> R, crossinline fallback: (Boolean) -> S? = { null }): R? =
     commitAsyncForResult(lock, predicate,
         { return@commitAsyncForResult block() },
         { fallback(false) })
 
-internal inline fun <R, S : R> commitLockedForResultUnless(lock: Any, noinline predicate: ObjectPredicate, crossinline block: () -> R, crossinline fallback: (Boolean) -> S? = { null }) =
+internal inline fun <R, S : R> commitLockedForResultUnless(lock: Any, noinline predicate: ObjectPredicate, crossinline block: () -> R, crossinline fallback: (Boolean) -> S? = { null }): R? =
     commitLockedForResult(lock, predicate::not, block)
 
-internal inline fun Any.commitLocked(predicate: ObjectPredicate, block: Work) =
+internal inline fun Any.commitLocked(predicate: ObjectPredicate, block: Work): Unit =
     commitAsync(this, predicate, block)
 
-internal inline fun Any.commitLockedUnless(noinline predicate: ObjectPredicate, block: Work) =
+internal inline fun Any.commitLockedUnless(noinline predicate: ObjectPredicate, block: Work): Unit =
     commitLocked(predicate::not, block)
 
 @Suppress("NOTHING_TO_INLINE")
-internal inline fun Any.commitLockedByFunction(predicate: BooleanKFunction, noinline block: Work) =
+internal inline fun Any.commitLockedByFunction(predicate: BooleanKFunction, noinline block: Work): Unit =
     commitAsyncByFunction(this, predicate, block)
 
 @Suppress("NOTHING_TO_INLINE")
-internal inline fun Any.commitLockedByFunctionUnless(predicate: BooleanKFunction, noinline block: Work) =
+internal inline fun Any.commitLockedByFunctionUnless(predicate: BooleanKFunction, noinline block: Work): Unit =
     commitLockedByFunction(predicate::isFalse, block)
 
 internal sealed interface AttachOperator<in S> {

@@ -8,4 +8,4 @@ import kotlin.annotation.AnnotationTarget.*
 @Target(ANNOTATION_CLASS, CONSTRUCTOR, FUNCTION, PROPERTY, PROPERTY_GETTER)
 annotation class LaunchScope
 
-internal fun filterIsLaunchScope(it: Any) = it.typeIs<LaunchScope, _>()
+internal fun filterIsLaunchScope(it: Any): Boolean = it.typeIs<LaunchScope, _>()

@@ -5,7 +5,7 @@ import kotlinx.coroutines.CoroutineScope
 internal object HandlerScope : ResolverScope {
     fun <T> transactor(): CallableTransactor<T> = TODO()
 
-    override fun commit(step: AnyCoroutineStep) =
+    override fun commit(step: AnyCoroutineStep): Any? =
         attach(step, ::handle)
 
     lateinit var threads: List<Thread>

@@ -57,10 +57,11 @@ private var networkCallback: NetworkCallback? = null
         .also { field = it }
 
 internal var reactToNetworkCapabilitiesChanged: (Network, NetworkCapabilities) -> Unit = { network, networkCapabilities ->
-    commit<NetworkResolver, NetworkContext>(::saveNetworkCapabilities, SchedulerScope(), network, networkCapabilities) }
+    withCallableScope {
+    ::saveNetworkCapabilities.commitStep(SchedulerScope(), network, networkCapabilities) } }
 
 @Tag(NET_CAP_UPDATE)
-private suspend fun saveNetworkCapabilities(scope: CoroutineScope, network: Network, networkCapabilities: NetworkCapabilities) =
+private suspend fun saveNetworkCapabilities(scope: CoroutineScope, network: Network, networkCapabilities: NetworkCapabilities): Unit =
     updateNetworkCapabilities(network, networkCapabilities)
 
 @Coordinate @Tag(INET_REGISTER)
@@ -109,22 +110,21 @@ private var netCallFunction: NetworkJobContinuation =
 internal sealed class NetCallFunction<T, S, R> : suspend (T, S) -> R {
     override suspend fun invoke(scope: T, self: S): R {
         if (isNetCallbackResumed and hasNetCallRepeatTimeElapsed)
-        scope.asCoroutineScope()?.run {
-        log(info, INET_TAG, "Trying to send out http request for network caller...")
-        launch { with(::netCall) {
-        commit(this@run) { // inform scope about net call - scope can inform context - block will be committed with context in its scope
-            // convert to contextual function by current context of scope - network contexts bring varieties to caller
-            setInstance(this@run, INET_CALL,
-                ::buildNetCall.implicitly().applyKeptOnce())
-            sendForResult(this@run,
-                { response ->
-                    trySafelyCanceling {
-                    reactToNetCallResponseReceived.commit(this@run, response) } },
-                { ex ->
-                    trySafelyCanceling {
-                    reactToNetCallRequestFailed.commit(this@run, ex) }
-                }) }
-        } } }
+            scope.asCoroutineScope()?.run {
+            log(info, INET_TAG, "Trying to send out http request for network caller...")
+            launch { with(::netCall) {
+            commit { // inform scope about net call - scope can inform context - block will be committed with context in its scope
+                setInstance(INET_CALL,
+                    ::buildNetCall.implicitly().applyKeptOnce())
+                sendForResult(
+                    { response ->
+                        trySafelyCanceling {
+                        reactToNetCallResponseReceived.commit(response) } },
+                    { ex ->
+                        trySafelyCanceling {
+                        reactToNetCallRequestFailed.commit(ex) }
+                    }) }
+            } } }
         // return different result optionally - a stateful response is a great choice
         return Unit.type() }
 
@@ -204,33 +204,38 @@ private var lastNetCallResponseTime = 0L
         if ((value > field) or value.isZeroTime)
             field = value }
 
-internal fun <R> NetCall.commit(scope: Any?, block: () -> R) =
+context(scope: Any?)
+internal fun <R> NetCall.commit(block: () -> R): R =
     lock(scope, block)
 
-private fun <R> NetCall.lock(scope: Any?, block: () -> R) =
+private fun <R> NetCall.lock(scope: Any?, block: () -> R): R =
     synchronized(asCallable(), block)
 
-private fun NetCall.asCallable() =
+private fun NetCall.asCallable(): KCallable<Call?> =
     when (this) {
     ::netCall -> ::netCall
     is CallableReference<*> -> asTypeUnsafe()
     else -> asProperty().getInstance().asReference() /* register lock */ }
 
-private fun NetCall.asProperty() = this as KProperty
+private fun NetCall.asProperty(): KProperty<Call?> = this as KProperty
 
-internal fun <R, S : R> NetCall.sendForResult(scope: Any?, respond: (Response) -> R, exit: (Throwable) -> S? = { null }) =
-    tryCancelingForResult({ execute(scope).run(respond) }, exit)
+context(scope: Any?)
+internal fun <R, S : R> NetCall.sendForResult(respond: (Response) -> R, exit: (Throwable) -> S? = { null }): R? =
+    tryCancelingForResult({ with(scope) { execute() }.run(respond) }, exit)
 
-private fun NetCall.execute(scope: Any?) =
+context(scope: Any?)
+private fun NetCall.execute(): Response =
     applyMarkTag(calls).getInstance(scope, INET_CALL).asType<NetCall>()
     ?.call()
     ?.execute()!!
 
-private fun JobResponseFunction.commit(scope: Any?, response: Response) {
+context(scope: Any?)
+private fun JobResponseFunction.commit(response: Response) {
     markTag(calls)
     invoke(scope, this, response) }
 
-private fun JobThrowableFunction.commit(scope: Any?, ex: Throwable) {
+context(scope: Any?)
+private fun JobThrowableFunction.commit(ex: Throwable) {
     markTag(calls)
     invoke(scope, this, ex) }
 
@@ -246,7 +251,8 @@ internal fun NetCall.getInstance(scope: Any?, id: TagType): Any? =
     INET_INTERVAL -> netCallRepeatTime
     else -> null }
 
-internal fun NetCall.setInstance(scope: Any?, id: TagType, value: Any?) {
+context(_: Any?)
+internal fun NetCall.setInstance(id: TagType, value: Any?) {
     if (value !== null && value.isKept) {
         value.markSequentialTag(INET_CALL, id, calls) }
     lock(id) { when (id) {
@@ -259,17 +265,19 @@ internal fun NetCall.setInstance(scope: Any?, id: TagType, value: Any?) {
 
 private sealed interface NetworkResolver : Resolver
 
+// network contexts bring varieties to caller
 internal sealed interface NetworkContext : SchedulerContext
 
 @Retention(SOURCE)
 @Target(FUNCTION, PROPERTY)
 private annotation class NetworkListener
 
-internal fun buildNetCall(scope: Any?, key: Any) = buildHttpCall(key)
+private fun buildNetCall(scope: Any?, key: Any): Call = buildHttpCall(key)
 
-private fun NetCall.implicitly(applied: Boolean = true, key: Any = "https://httpbin.org/delay/1"): Call? = call(key)
+context(scope: Any?)
+private fun NetCall.implicitly(applied: Boolean = true, key: Any = "https://httpbin.org/delay/1"): Call? = call(scope, key)
 
-internal fun buildHttpCall(key: Any, method: String = "GET", body: RequestBody? = null, headers: Headers? = null, retry: Boolean = false) =
+private fun buildHttpCall(key: Any, method: String = "GET", body: RequestBody? = null, headers: Headers? = null, retry: Boolean = false): Call =
     when (key) {
     is Call -> key
     else ->
@@ -279,25 +287,25 @@ internal fun buildHttpCall(key: Any, method: String = "GET", body: RequestBody? 
             method(method, body)
             headers?.run(::headers) } } } }
 
-private fun httpClient(retry: Boolean = false) =
+private fun httpClient(retry: Boolean = false): OkHttpClient =
     OkHttpClient.Builder()
     .retryOnConnectionFailure(retry)
     .build()
 
-private inline fun OkHttpClient.newCall(block: Request.Builder.() -> Request) =
+private inline fun OkHttpClient.newCall(block: Request.Builder.() -> Request): Call =
     newCall(Request.Builder().block())
 
-private inline fun Request.Builder.newRequest(block: Request.Builder.() -> Request.Builder) =
+private inline fun Request.Builder.newRequest(block: Request.Builder.() -> Request.Builder): Request =
     block().build()
 
-private fun Any.asUrl() = toString()
+private fun Any.asUrl(): String = toString()
 
 private var connectivityRequest: NetworkRequest? = null
     get() = field ?: buildNetworkRequest {
         addCapability(NET_CAPABILITY_INTERNET) }
         .also { field = it }
 
-private inline fun buildNetworkRequest(block: NetworkRequest.Builder.() -> Unit) =
+private inline fun buildNetworkRequest(block: NetworkRequest.Builder.() -> Unit): NetworkRequest =
     NetworkRequest.Builder().apply(block).build()
 
 private fun clearNetworkCallbackObjects() {

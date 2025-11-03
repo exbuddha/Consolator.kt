@@ -2,6 +2,7 @@ package iso.consolator.component
 
 import iso.consolator.Resolver
 import iso.consolator.SchedulerScope
+import iso.consolator.SchedulerStep
 import iso.consolator.TransitType
 import iso.consolator.asType
 import iso.consolator.asTypeUnsafe
@@ -9,13 +10,13 @@ import iso.consolator.reflect.Table
 
 sealed interface TransitionManager : Resolver {
     interface MainViewNavigator : TransitionManager, Table {
-        val startMainViewNavigation
+        val startMainViewNavigation: SchedulerStep
             get() = SchedulerScope.EMPTY_STEP
 
-        val abortMainViewNavigation
+        val abortMainViewNavigation: SchedulerStep
             get() = SchedulerScope.EMPTY_STEP
 
-        val timeoutMainViewNavigation
+        val timeoutMainViewNavigation: SchedulerStep
             get() = SchedulerScope.EMPTY_STEP
     }
 
@@ -24,10 +25,10 @@ sealed interface TransitionManager : Resolver {
      *
      * @param destination the destination.
      */
-    fun commit(destination: Short) = Unit
+    fun commit(destination: Short): Unit = TODO()
 
-    override fun commit(vararg context: Any?) =
+    override fun commit(vararg context: Any?): Unit =
         commit(destination = context[0].asTypeUnsafe<TransitType>())
 }
 
-internal fun Any?.asTransitionManager() = asType<TransitionManager>()
+internal fun Any?.asTransitionManager(): TransitionManager? = asType<TransitionManager>()

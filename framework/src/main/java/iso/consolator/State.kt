@@ -12,8 +12,8 @@ import kotlin.reflect.*
 import kotlinx.coroutines.*
 
 sealed interface StateDescriptor<in S : State, out L : State> : Descriptor<State, L> {
-    // include descriptor as context parameter
-    fun <A : S, T : StateType> A.onValueTypeChanged(type: T, block: Descriptor<S, L>.(L) -> Any?) = this@StateDescriptor
+    context(_: AnyDescriptor)
+    fun <A : S, T : StateType> A.onValueTypeChanged(type: T, block: Descriptor<S, L>.(L) -> Any?): StateDescriptor<S, L> = this@StateDescriptor
 }
 
 typealias BaseStateDescriptor = Descriptor<State, State>
@@ -34,58 +34,89 @@ typealias DirectViewStateDescriptor = ViewStateDescriptor<ViewState>
 // callables can be considered as the origination points for some features and routines
 // they may receive any value in order to resolve their own or another active context
 // states concurrently maintain and transact with the flow of communication among routines
+// context parameter allows to selectively operate in active contexts or on routines
 
-// convert to contextual functions with AnyKProperty as parameter
-// to allow to selectively operate in active contexts or on routines
+internal fun <R, S : R> KCallable<R>.receiveUniquely(value: S): S = value
 
-internal fun <R, S : R> KCallable<R>.receiveUniquely(value: S) = value
+//context(_: AnyKProperty)
+//internal fun <R, S : R> KCallable<R>.receiveUniquely(value: S): S = value
 
-internal fun <R, S : R> KCallable<R>.receive(value: S) =
+internal fun <R, S : R> KCallable<R>.receive(value: S): S =
     receiveUniquely(value).also(run(::asKMutableProperty)!!::setInstance)
 
-internal fun <R> KCallable<R>.determine(vararg subroutine: KCallable<R>? = asTypedArray()) = this
+context(_: AnyKProperty)
+internal fun <R, S : R> KCallable<R>.receive(value: S): S =
+    run { receiveUniquely(value).also(run(::asKMutableProperty)!!::setInstance) }
 
-internal fun <R> KCallable<R>.perceive(vararg subroutine: KCallable<R>? = asTypedArray()) = this
+internal fun <R> KCallable<R>.determine(vararg subroutine: KCallable<R>? = asTypedArray()): KCallable<R> = this
 
-internal fun <R> KCallable<R>.satisfy(vararg subroutine: KCallable<R>? = asTypedArray()) = this
+context(_: AnyKProperty)
+internal fun <R> KCallable<R>.determine(vararg subroutine: KCallable<R>? = asTypedArray()): KCallable<R> = this
 
-internal fun <R> KCallable<R>.falsify(vararg subroutine: KCallable<R>? = asTypedArray()) = this
+internal fun <R> KCallable<R>.perceive(vararg subroutine: KCallable<R>? = asTypedArray()): KCallable<R> = this
 
-internal fun <R> KCallable<R>.fulfill(vararg subroutine: KCallable<R>? = asTypedArray()) = this
+context(_: AnyKProperty)
+internal fun <R> KCallable<R>.perceive(vararg subroutine: KCallable<R>? = asTypedArray()): KCallable<R> = this
 
-internal fun <R> KCallable<R>.forfeit(vararg subroutine: KCallable<R>? = asTypedArray()) = this
+internal fun <R> KCallable<R>.satisfy(vararg subroutine: KCallable<R>? = asTypedArray()): KCallable<R> = this
 
-internal fun <R> KCallable<R>.resolve(vararg subroutine: KCallable<R>? = asTypedArray()) = this
+context(_: AnyKProperty)
+internal fun <R> KCallable<R>.satisfy(vararg subroutine: KCallable<R>? = asTypedArray()): KCallable<R> = this
 
-internal fun <R> KCallable<R>.synchronize(block: () -> R) = synchronized(this, block)
+internal fun <R> KCallable<R>.falsify(vararg subroutine: KCallable<R>? = asTypedArray()): KCallable<R> = this
 
-internal operator fun <R> KCallable<R>.plus(lock: AnyKCallable) = this
+context(_: AnyKProperty)
+internal fun <R> KCallable<R>.falsify(vararg subroutine: KCallable<R>? = asTypedArray()): KCallable<R> = this
+
+internal fun <R> KCallable<R>.fulfill(vararg subroutine: KCallable<R>? = asTypedArray()): KCallable<R> = this
+
+context(_: AnyKProperty)
+internal fun <R> KCallable<R>.fulfill(vararg subroutine: KCallable<R>? = asTypedArray()): KCallable<R> = this
+
+internal fun <R> KCallable<R>.forfeit(vararg subroutine: KCallable<R>? = asTypedArray()): KCallable<R> = this
+
+context(_: AnyKProperty)
+internal fun <R> KCallable<R>.forfeit(vararg subroutine: KCallable<R>? = asTypedArray()): KCallable<R> = this
+
+internal fun <R> KCallable<R>.resolve(vararg subroutine: KCallable<R>? = asTypedArray()): KCallable<R> = this
+
+context(_: AnyKProperty)
+internal fun <R> KCallable<R>.resolve(vararg subroutine: KCallable<R>? = asTypedArray()): KCallable<R> = this
+
+internal fun <R> KCallable<R>.synchronize(block: () -> R): R = synchronized(this, block)
+
+context(_: AnyKProperty)
+internal fun <R> KCallable<R>.synchronize(block: () -> R): R = synchronized(this, block)
+
+internal operator fun <R> KCallable<R>.plus(lock: AnyKCallable): KCallable<R> = this
 
 // view state controllers
 
 internal class GroupCoordinator<out S : ViewState>() : ViewCoordinator<ViewGroup, S>, ViewStateDescriptor<S> {
     constructor(fragment: SchedulerFragment) : this()
 
-    override fun State.acquire() = TODO()
+    override fun State.acquire(): State = TODO()
 
-    override infix fun State.issue(cmd: (State, S) -> ActionIntent) = TODO()
+    override infix fun State.issue(cmd: (State, S) -> ActionIntent): Unit = TODO()
 
-    override infix fun State.from(ref: State) = TODO()
+    override infix fun State.from(ref: State): S = TODO()
 
-    override fun <R> synchronize(lock: State?, block: () -> R) = TODO()
+    override fun <R> synchronize(lock: State?, block: () -> R): R = TODO()
 
-    override fun attach(model: ViewModel) = TODO()
+    override fun attach(model: ViewModel): Unit = TODO()
 
-    override fun detach(model: ViewModel) = TODO()
+    override fun detach(model: ViewModel): Unit = TODO()
 
-    // set context parameter to marked view state for view group
-    override fun <S : ViewState> ViewGroup.onViewStateChanged(vararg occurrence: S) = occurrence
+    context(_: ViewState)
+    override fun <S : ViewState> ViewGroup.onViewStateChanged(vararg occurrence: S): Array<out S> = occurrence
 
-    override fun <A : State, B : State> A.onValueChanged(value: B, block: Descriptor<State, S>.(S) -> Any?) = TODO()
+    context(_: AnyDescriptor)
+    override fun <A : State, B : State> A.onValueChanged(value: B, block: Descriptor<State, S>.(S) -> Any?): Descriptor<State, S> = TODO()
 
-    override fun <A : ViewState, T : StateType> A.onValueTypeChanged(type: T, block: Descriptor<ViewState, S>.(S) -> Any?) = TODO()
+    context(_: AnyDescriptor)
+    override fun <A : ViewState, T : StateType> A.onValueTypeChanged(type: T, block: Descriptor<ViewState, S>.(S) -> Any?): StateDescriptor<ViewState, S> = TODO()
 
-    override val descriptor get() = this
+    override val descriptor: GroupCoordinator<S> get() = this
 
     override fun equals(other: Any?) = isObject(other)
 
@@ -95,25 +126,28 @@ internal class GroupCoordinator<out S : ViewState>() : ViewCoordinator<ViewGroup
 internal class SharedCoordinator<out S : ViewState>() : ViewGroupCoordinator<ViewGroup, S>, ViewStateDescriptor<S> {
     constructor(fragment: SchedulerFragment) : this()
 
-    override fun State.acquire() = TODO()
+    override fun State.acquire(): State = TODO()
 
-    override infix fun State.issue(cmd: (State, S) -> ActionIntent) = TODO()
+    override infix fun State.issue(cmd: (State, S) -> ActionIntent): Unit = TODO()
 
-    override infix fun State.from(ref: State) = TODO()
+    override infix fun State.from(ref: State): S = TODO()
 
-    override fun <R> synchronize(lock: State?, block: () -> R) = TODO()
+    override fun <R> synchronize(lock: State?, block: () -> R): R = TODO()
 
-    override fun attach(model: ViewModel) = TODO()
+    override fun attach(model: ViewModel): Unit = TODO()
 
-    override fun detach(model: ViewModel) = TODO()
+    override fun detach(model: ViewModel): Unit = TODO()
 
-    override fun <V : View, S : ViewState> V.onViewStateChanged(vararg occurrence: S) = occurrence
+    context(_: ViewGroup, _: ViewState)
+    override fun <V : View, S : ViewState> V.onViewStateChanged(vararg occurrence: S): Array<out S> = occurrence
 
-    override fun <A : State, B : State> A.onValueChanged(value: B, block: Descriptor<State, S>.(S) -> Any?) = TODO()
+    context(_: AnyDescriptor)
+    override fun <A : State, B : State> A.onValueChanged(value: B, block: Descriptor<State, S>.(S) -> Any?): Descriptor<State, S> = TODO()
 
-    override fun <A : ViewState, T : StateType> A.onValueTypeChanged(type: T, block: Descriptor<ViewState, S>.(S) -> Any?) = TODO()
+    context(_: AnyDescriptor)
+    override fun <A : ViewState, T : StateType> A.onValueTypeChanged(type: T, block: Descriptor<ViewState, S>.(S) -> Any?): StateDescriptor<ViewState, S> = TODO()
 
-    override val descriptor get() = this
+    override val descriptor: SharedCoordinator<S> get() = this
 
     override fun equals(other: Any?) = isObject(other)
 
@@ -129,7 +163,7 @@ internal class SharedCoordinator<out S : ViewState>() : ViewGroupCoordinator<Vie
 // low-level requirements are derived from base states via coordinator.descriptors
 // refactoring layer translates descriptions to context-coordinator instructions by dependency revision [*]
 // action intents are used to derive instructions from state-coordinator conversion maps
-// referables are modelled to intent types and variables in context-coordinator instruction sets
+// referables are modeled to intent types and variables in context-coordinator instruction sets
 // system maintains active contexts and controls the models (related to program contexts and events)
 // engine coordinates system routines (related to execution models and preferences)
 
@@ -140,7 +174,7 @@ internal sealed interface Dependence<in S> {
 }
 
 internal sealed interface StateDependence<in S : State> : Dependence<S> {
-    // set coroutine scope as context parameter
+    context(_: CoroutineScope)
     fun <R, O : S> determined(vararg state: S?): (O) -> R
 
     sealed interface Inside<in S : State> : StateDependence<S> {
@@ -167,24 +201,26 @@ internal sealed interface StateInterceptor<in S : State> : StateDependence<S>, I
 internal typealias BasicDependence = Dependence<BaseState>
 internal typealias NumericDependence = Dependence<Number>
 
-// convert to contextual functions
 sealed interface LockState : State, FunctionSetState {
     // register key and block with thread (key may be a message)
-    fun <R> LockState.switch(key: Any?, block: () -> R) =
+    context(_: Any)
+    fun <R> LockState.switch(key: Any?, block: () -> R): Lock =
         super<State>.invoke(key, block)
 
     // assign pre-block lock invoker to registered key
-    infix fun LockState.unlock(pass: (LockState) -> Lock) =
+    context(_: Any)
+    infix fun LockState.unlock(pass: (LockState) -> Lock): Lock =
         pass(this).also {
         this[-1] = it }
 
     // assign post-block lock invoker to registered key, record value
+    context(_: Any)
     fun <R> LockState.release(value: R, pass: (LockState) -> LockState): R {
         this[-2] = pass(this)
         return value }
 
     // post param state (param may be a registered key or an internal lock)
-    override fun invoke(vararg param: Any?) =
+    override fun invoke(vararg param: Any?): Lock =
         super<FunctionSetState>.invoke(*param)
 }
 
@@ -198,7 +234,8 @@ sealed interface FunctionSetState : State, FunctionSetPointer
 
 sealed class BaseState : State, IndexNumber() {
     // handle static states
-    override fun equals(other: Any?) = when (other) {
+    override fun equals(other: Any?) =
+        when (other) {
         is State -> super.equals(other)
         is Number -> super.equals(other)
         else -> super.equals(other) }
@@ -215,9 +252,9 @@ sealed class OpenState : BaseState() {
 
 sealed interface BooleanState : State, BooleanType
 
-internal fun Number?.toStateId() = asType<StateID>()
+internal fun Number?.toStateId(): StateID? = asType<StateID>()
 
-internal fun AnyKCallable.asState() = State of asKProperty()!!
+internal fun AnyKCallable.asState(): State = State of asKProperty()!!
 
 // user states are registered and loaded with control flow logic at runtime
 // they can be retrieved as live references and provide access to job controllers
@@ -226,9 +263,9 @@ internal typealias StateID = Short
 
 sealed interface ViewState : State
 
-infix fun <S : State, T> S?.`is`(value: T) = this == value
+infix fun <S : State, T> S?.`is`(value: T): Boolean = this == value
 
-infix fun <T> Any?.stateIs(value: T) = `is`(value)
+infix fun <T> Any?.stateIs(value: T): Boolean = `is`(value)
 
 sealed interface State {
     data object Succeeded : Resolved
@@ -236,10 +273,10 @@ sealed interface State {
 
     sealed interface Resolved : State {
         companion object : Resolved {
-            @JvmStatic inline infix fun where(predicate: BooleanPointer) =
+            @JvmStatic inline infix fun where(predicate: BooleanPointer): State =
                 runUnless<State, _>({ predicate() stateIs true }) { Unresolved }
 
-            @JvmStatic inline infix fun unless(predicate: BooleanPointer) =
+            @JvmStatic inline infix fun unless(predicate: BooleanPointer): State =
                 runWhen<State, _>({ predicate() stateIs true }) { Unresolved }
     } }
 
@@ -248,6 +285,9 @@ sealed interface State {
 
     companion object : ActiveContextSynchronizer, DirectStateDescriptor, OpenState(), StateDependence.Inside<State>, NumericUnifier {
         @JvmStatic lateinit var VM: ViewModel
+
+        context(self: Any)
+        @JvmStatic val ofSelf: State get() = Ambiguous
 
         @JvmStatic fun of(vararg args: Any?): State = Ambiguous
 
@@ -261,39 +301,40 @@ sealed interface State {
 
         internal infix fun <P : AnyKProperty> of(property: P): State = Ambiguous
 
-        internal abstract class BaseViewState : ViewState
+        abstract class BaseViewState : ViewState
 
-        // use state descriptor as context parameter
         // blocks committed by container must be cleared by lifecycle expiry
+        context(_: DirectStateDescriptor)
         @JvmStatic fun <R : State> accept(container: ViewGroup?, descriptor: KMutableProperty<out BaseStateDescriptor>, block: BaseStateDescriptor.(State) -> R): State {
             // register container - prepare for view restarts
             // set view state descriptor in view group
             // use callable item to set/get value if this intrinsically throws an unsupported exception at runtime due to being a reified type parameter
             descriptor.setInstance(object : DirectViewStateDescriptor {
-                override fun <A : State, B : State> A.onValueChanged(value: B, block: ImplicitViewStateDescriptor.(ViewState) -> Any?) =
+                context(_: AnyDescriptor)
+                override fun <A : State, B : State> A.onValueChanged(value: B, block: ImplicitViewStateDescriptor.(ViewState) -> Any?): ImplicitViewStateDescriptor =
                     descriptor.getAsTypeUnsafe<_, ImplicitViewStateDescriptor>().apply {
                     when (this@onValueChanged) {
                         is BaseViewState -> { /* assign new transit map to the instance of change for the view state */ }
                         else -> {} } }
 
-                override fun <A : ViewState, T : StateType> A.onValueTypeChanged(type: T, block: BaseViewStateDescriptor.(ViewState) -> Any?) =
+                context(_: AnyDescriptor)
+                override fun <A : ViewState, T : StateType> A.onValueTypeChanged(type: T, block: BaseViewStateDescriptor.(ViewState) -> Any?): ExplicitViewStateDescriptor =
                     descriptor.getAsTypeUnsafe<_, ExplicitViewStateDescriptor>().apply {
                     when (type) {
                         Resolved::class -> { /* assign new transit map to the type of change out of resolved state for the view state */ }
                         else -> {} } }
             })
-            return this.block(object : BaseViewState() {}) /* or assigned init state */ }
+            return block(object : BaseViewState() {}) /* or assigned init state */ }
 
-        // convert to contextual function for access restrictions
         // accepts internal states and generated states from registered views
-        @JvmStatic inline fun <S : State, reified R : S> initial(state: S) =
+        @JvmStatic inline fun <S : State, reified R : S> initial(state: S): R =
             when (state) {
                 is BaseViewState -> state // mark initial view state for view group or view
                 else -> this
             } as R
 
-        // convert to contextual function
         // registers states to call site specs and accepts known arguments
+        context(_: DirectStateDescriptor)
         @JvmStatic fun State.register(vararg args: Any?): State {
             args.firstOrNull()?.let { first ->
             when (first) {
@@ -302,7 +343,7 @@ sealed interface State {
             return this }
 
         // enables communication with internal state referables
-        // include a contextual function with state descriptor as parameter type
+        context(_: AnyDescriptor)
         override fun <A : State, B : State> A.onValueChanged(value: B, block: BaseStateDescriptor.(State) -> Any?): DirectStateDescriptor =
             when (this) {
             this@Companion -> {
@@ -311,53 +352,62 @@ sealed interface State {
             else ->
                 TODO() }
 
-        override fun <A : State, T : StateType> A.onValueTypeChanged(type: T, block: BaseStateDescriptor.(State) -> Any?) = TODO()
+        context(_: AnyDescriptor)
+        override fun <A : State, T : StateType> A.onValueTypeChanged(type: T, block: BaseStateDescriptor.(State) -> Any?): DirectStateDescriptor = TODO()
 
-        // enables super-imposing view groups
-        // convert to contextual function with view as parameter type (registered views)
+        // enables super-imposing view groups (registered views)
+        context(_: View)
         @JvmStatic fun <V : View, A : State, B : State> V.onViewStateChanged(first: A, second: B, block: ImplicitViewStateDescriptor.(StateArray) -> Any?): Unit = TODO()
 
+        context(_: CoroutineScope)
         override fun <R, O : State> determined(vararg state: State?): (O) -> R = TODO()
 
-        override infix fun State.from(ref: State) = TODO()
+        override infix fun State.from(ref: State): State = TODO()
 
-        override fun State.acquire(vararg context: Any?, block: StateCoordinator.(StateArray) -> Unit) = TODO()
+        override fun State.acquire(vararg context: Any?, block: StateCoordinator.(StateArray) -> Unit): Unit = TODO()
 
         // allows to coordinate view states with internal states
-        override fun State.acquire() = TODO()
+        override fun State.acquire(): State = TODO()
 
-        override fun <S : State, R> access(state: S, block: StateCoordinator.(S) -> R) = TODO()
+        override fun <S : State, R> access(state: S, block: StateCoordinator.(S) -> R): R = TODO()
 
-        override infix fun State.issue(cmd: (State, State) -> ActionIntent) = TODO()
+        override infix fun State.issue(cmd: (State, State) -> ActionIntent): Unit = TODO()
 
-        override fun release(lock: State) =
+        override fun release(lock: State): Unit =
             when (lock) {
-                is ViewState -> { /* update referables in context - revise dependency maps */ }
-                else -> Unit }
+            is ViewState -> { /* update referables in context - revise dependency maps */ }
+            else -> Unit }
 
         override fun merge(context: StateCoordinator?): BaseContextCoordinator = this
 
-        override fun FunctionSet.withState(vararg ref: State) = TODO()
+        override fun FunctionSet.withState(vararg ref: State): FunctionSetPointer = TODO()
 
         override fun invoke(): FunctionSet = TODO()
 
-        @JvmStatic override val descriptor
+        @JvmStatic override val descriptor: Companion
             get() = this
 
-        override fun <R> synchronize(lock: State?, block: () -> R) =
+        override fun <R> synchronize(lock: State?, block: () -> R): R =
             synchronized(lock ?: this, block)
 
-        override operator fun get(id: StateID): State = when (id.asSelectableStateId()) {
+        override operator fun get(id: StateID): State =
+            when (id.asSelectableStateId()) {
             1 -> Resolved unless ::isRuntimeDbOrSessionNull
             2 -> Resolved unless ::isLogDbOrNetDbNull
             else -> Open
         }
 
-        override operator fun set(id: StateID, state: Any) { when (id.asSelectableStateId()) {
+        override operator fun set(id: StateID, state: Any) {
+            when (id.asSelectableStateId()) {
+            -1 -> if (state is Resolved) when {
+                currentThread.isMainThread -> {
+                    /* touch context has been called and main uncaught exception handler is initialized */ }
+                else -> {
+                    /* report to handler scope */ } }
             1 -> if (state is Resolved) SchedulerScope().windDown()
         } }
 
-        private fun <S : Number> S.asSelectableStateId() = asUnifiedStateId().toInt()
+        private fun <S : Number> S.asSelectableStateId(): Int = asUnifiedStateId().toInt()
 
         override fun <S : Number> S.asUnifiedStateId(): StateID = run(::unifyNumberUnsafe)
 
@@ -371,21 +421,22 @@ sealed interface State {
         internal operator fun minusAssign(lock: Any) {}
     }
 
-    operator fun invoke(vararg param: Any?) =
+    operator fun invoke(vararg param: Any?): Lock =
         (param.firstOrNull() ?: this) as Lock
 
-    operator fun get(id: StateID) = this
+    operator fun get(id: StateID): State = this
 
-    operator fun set(id: StateID, state: Any) = when (id.asSelectableStateId()) {
+    operator fun set(id: StateID, state: Any): Unit =
+        when (id.asSelectableStateId()) {
         -1 -> { /* unlock state */ }
         -2 -> { run(::release) }
         else -> Unit }
 
-    operator fun plus(state: Any) = this
-    operator fun minus(state: Any) = this
-    operator fun rangeTo(state: Any) = this
+    operator fun plus(state: Any): State = this
+    operator fun minus(state: Any): State = this
+    operator fun rangeTo(state: Any): State = this
     operator fun not(): State = this
-    operator fun contains(state: Any) = isObject(state)
+    operator fun contains(state: Any): Boolean = isObject(state)
 }
 
 // state transaction functions
@@ -414,7 +465,8 @@ internal typealias ViewStateArray = Array<out ViewState>
 internal typealias StateType = KClass<out State>
 internal typealias ViewStateType = KClass<out ViewState>
 
-private inline fun <R, reified S : KCallable<R>> S.asTypedArray() =
+private inline fun <R, reified S : KCallable<R>> S.asTypedArray(): Array<S> =
     arrayOf<S>(asTypeUnsafe())
 
 private typealias BaseRoutineDescriptor = Descriptor<Routine, State>
+internal typealias AnyDescriptor = Descriptor<*,*>

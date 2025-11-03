@@ -8,7 +8,7 @@ import kotlin.reflect.KCallable
 import kotlinx.coroutines.CoroutineScope
 
 interface Resolver : ResolverScope {
-    override fun commit(step: AnyCoroutineStep) =
+    override fun commit(step: AnyCoroutineStep): Unit? =
         commit(blockOf(step))
 
     fun commit(vararg context: Any?): Unit?

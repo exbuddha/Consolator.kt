@@ -21,23 +21,23 @@ internal fun Job.close(node: SchedulerNode): Boolean = true
 internal val Job.node: SchedulerNode
     get() = TODO()
 
-internal fun FunctionSet.saveCoroutine(self: AnyKCallable, tag: Tag) =
+internal fun FunctionSet.saveCoroutine(self: AnyKCallable, tag: Tag): Any =
     save(self, tag, Item.Type.Coroutine)
 
-internal fun FunctionSet.saveCoroutine(self: AnyKCallable, tag: TagType) =
+internal fun FunctionSet.saveCoroutine(self: AnyKCallable, tag: TagType): Tag? =
     save(self, tag, Item.Type.Coroutine)
 
 internal open class CoroutineItem<R>(target: KCallable<R>) : Item<R>(target) {
     init {
         type = Type.Coroutine }
 
-    open fun onSaveLifecycleOwner(owner: LifecycleOwner?) = this
+    open fun onSaveLifecycleOwner(owner: LifecycleOwner?): CoroutineItem<R> = this
 
-    open fun onSaveCoroutineContext(context: CoroutineContext?) = this
+    open fun onSaveCoroutineContext(context: CoroutineContext?): CoroutineItem<R> = this
 
-    open fun onSaveCoroutineStart(start: CoroutineStart) = this
+    open fun onSaveCoroutineStart(start: CoroutineStart): CoroutineItem<R> = this
 
-    open fun onSaveJob(job: Job) = this
+    open fun onSaveJob(job: Job): CoroutineItem<R> = this
 
     open fun onContextReform(job: Job, stage: ContextStep?, form: AnyStep): Item<R> {
         onSaveJob(job)
@@ -51,7 +51,7 @@ internal open class CoroutineItem<R>(target: KCallable<R>) : Item<R>(target) {
         onSaveCoroutineStart(start)
         return this }
 
-    open fun onJobRelaunch(job: Job, owner: LifecycleOwner?, context: CoroutineContext, start: CoroutineStart) =
+    open fun onJobRelaunch(job: Job, owner: LifecycleOwner?, context: CoroutineContext, start: CoroutineStart): CoroutineItem<R> =
         onSaveLifecycleOwner(owner)
         .onJobLaunch(job, context, start)
 
@@ -71,10 +71,10 @@ internal open class CoroutineItem<R>(target: KCallable<R>) : Item<R>(target) {
         onSave(DELAY, delay) }
 }
 
-internal fun Any?.asCoroutineItem() = asType<CoroutineItem<*>>()
+internal fun Any?.asCoroutineItem(): AnyCoroutineItem? = asType<AnyCoroutineItem>()
 
 // enables marked job and itemizes steps (optionally include context as argument)
-internal fun Job.applySaveNewElement(step: AnyCoroutineStep) = this
+internal fun Job.applySaveNewElement(step: AnyCoroutineStep): Job = this
 
 // applying statement performs an operation on last marked step and next chained item
 // and returns the next step attached in the resolved chain
@@ -93,7 +93,7 @@ private fun Job.markedCoroutineStep(): AnyCoroutineStep = TODO()
 
 private fun Job.lastMarkedCoroutineStep(): AnyCoroutineStep = TODO()
 
-private fun Job.getTag() = markedCoroutineStep().asReference().tag!!.id
+private fun Job.getTag(): TagType = markedCoroutineStep().asReference().tag!!.id
 
 // from this point on, step and context are the same
 // this may be the coroutine context or the context of the step for the job
@@ -115,20 +115,20 @@ internal suspend fun <R> CoroutineScope.take(next: suspend SchedulerScope.(Any?,
 
 internal suspend fun <R> (suspend CoroutineScope.() -> R)?.isCurrentlyTrueGiven(predicate: SchedulerPrediction): Boolean = TODO()
 
-internal suspend fun <R> (suspend CoroutineScope.() -> R)?.isCurrentlyTrueGiven(predicate: Predicate) =
+internal suspend fun <R> (suspend CoroutineScope.() -> R)?.isCurrentlyTrueGiven(predicate: Predicate): Boolean =
     predicate()
 
 internal suspend fun <R> (suspend CoroutineScope.() -> R)?.isCurrentlyFalseGiven(predicate: SchedulerPrediction): Boolean = TODO()
 
-internal suspend fun <R> (suspend CoroutineScope.() -> R)?.isCurrentlyFalseGiven(predicate: Predicate) =
+internal suspend fun <R> (suspend CoroutineScope.() -> R)?.isCurrentlyFalseGiven(predicate: Predicate): Boolean =
     predicate().not()
 
-internal suspend fun <R, S> (suspend CoroutineScope.() -> R)?.isCurrentlyFalseReferring(target: suspend SchedulerScope.(Any?, Job) -> S) =
+internal suspend fun <R, S> (suspend CoroutineScope.() -> R)?.isCurrentlyFalseReferring(target: suspend SchedulerScope.(Any?, Job) -> S): Boolean =
     currentConditionReferring(target).not()
 
-private suspend fun <R> (suspend CoroutineScope.() -> R)?.currentCondition() = true
+private suspend fun <R> (suspend CoroutineScope.() -> R)?.currentCondition(): Boolean = true
 
-private suspend fun <R, S> (suspend CoroutineScope.() -> R)?.currentConditionReferring(target: suspend SchedulerScope.(Any?, Job) -> S) = true
+private suspend fun <R, S> (suspend CoroutineScope.() -> R)?.currentConditionReferring(target: suspend SchedulerScope.(Any?, Job) -> S): Boolean = true
 
 private suspend fun <R> (suspend CoroutineScope.() -> R)?.accept(): Any? { TODO() }
 
@@ -167,17 +167,19 @@ internal fun <R> (suspend SchedulerScope.(Any?, Job) -> R).annotatedOrCurrentSco
 
 private fun Job.currentCoroutineStep(): AnyCoroutineStep = TODO()
 
-internal suspend fun currentJob() = currentCoroutineContext().job
-internal fun currentThreadJob() = ::currentJob.block()
+internal suspend fun currentJob(): Job = currentCoroutineContext().job
+internal fun currentThreadJob(): Job = ::currentJob.block()
 
-private val Job?.isNotActive get() = this === null || !isActive
+internal val Job?.isNotActive: Boolean get() = this === null || !isActive
 
-internal fun Any?.toJobId() = asJob().hashCode()
+internal fun Any?.toJobId(): Int = asJob().hashCode()
 
-internal fun Any?.asJob() = asType<Job>()
+internal fun Any?.asJob(): Job? = asType<Job>()
 
-internal inline fun <T : Job> KMutableProperty<out T?>.requireActive(block: () -> T?) =
+internal inline fun <T : Job> KMutableProperty<out T?>.requireActive(block: () -> T?): T =
     require(Job?::isNotActive, block)
+
+internal typealias AnyCoroutineItem = CoroutineItem<*>
 
 private typealias JobKFunction = KFunction<Job?>
 internal typealias JobKProperty = KMutableProperty<Job?>

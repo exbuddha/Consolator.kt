@@ -10,10 +10,10 @@ interface ReceiverItem<in T> {
     fun <R> ReceiverItem<R>.set(value: R): ReceiverItem<T>
 
     @Suppress("UNCHECKED_CAST")
-    fun <R> setTo(target: KProperty<R?>) =
+    fun <R> setTo(target: KProperty<R?>): ReceiverItem<T> =
         with(this) { set(value = target.getInstance() as T) }
 
-    fun <R> setTo(target: KProperty<R?>, tag: Tag?) =
+    fun <R> setTo(target: KProperty<R?>, tag: Tag?): ReceiverItem<T> =
         setTo(target).also { /* define tag locally, implicitly, or in source */ }
 
     interface Stub<in T : Any> : ReceiverItem<T> {

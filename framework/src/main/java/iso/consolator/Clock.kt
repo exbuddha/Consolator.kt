@@ -9,13 +9,13 @@ import kotlin.reflect.KCallable
 import kotlinx.coroutines.CoroutineScope
 
 // runnable <-> message
-internal fun post(callback: Runnable) = clock?.post?.invoke(callback)
-internal fun postAhead(callback: Runnable) = clock?.postAhead?.invoke(callback)
+internal fun post(callback: Runnable): Any? = clock?.post?.invoke(callback)
+internal fun postAhead(callback: Runnable): Any? = clock?.postAhead?.invoke(callback)
 
 internal var clock: Clock? = null
     get() = field.defaultSingleton().also { field = it }
 
-internal inline fun <R> withClock(block: Clock.Companion.() -> R) =
+internal inline fun <R> withClock(block: Clock.Companion.() -> R): R =
     with(Clock, block)
 
 internal typealias ClockIndex = Number
@@ -48,8 +48,8 @@ internal open class Clock(
     var id = -1
         private set
 
-    val isStarted get() = id != -1
-    val isNotStarted get() = id == -1
+    val isStarted: Boolean get() = id != -1
+    val isNotStarted: Boolean get() = id == -1
 
     override fun start() {
         id = indexOf(queue)
@@ -59,14 +59,14 @@ internal open class Clock(
         start()
         return this }
 
-    fun startAsync() =
+    fun startAsync(): Unit =
         commitLockedByFunction(::isAlive::not, ::start)
 
     fun alsoStartAsync(): Clock {
         startAsync()
         return this }
 
-    @JvmField var isRunning = false
+    @JvmField var isRunning: Boolean = false
 
     override fun run() {
         hLock = Open
@@ -77,16 +77,16 @@ internal open class Clock(
         isRunning = true
         queue.run() }
 
-    override fun commit(step: Message) =
+    override fun commit(step: Message): Unit =
         if (isSynchronized(step))
-            synchronize(State of step) {
+            synchronize(iso.consolator.State of step) {
                 if (queue.run(step, false))
                     step.callback
                         .markTagForClkExec()
                         .run() }
         else step.callback.exec()
 
-    private fun RunnableList.run(msg: Message? = null, isIdle: Boolean = true) =
+    private fun RunnableList.run(msg: Message? = null, isIdle: Boolean = true): Boolean =
         with(precursorOf(msg)) {
             forEach {
             var ln = it
@@ -99,11 +99,11 @@ internal open class Clock(
             } }
             hasNotTraversed(msg) }
 
-    private fun precursorOf(msg: Message?) = queue.indices
+    private fun precursorOf(msg: Message?): IntRange = queue.indices
 
-    private fun IntProgression.adjust(ln: ClockIndex) = adjust(index = ln)
+    private fun IntProgression.adjust(ln: ClockIndex): Int = adjust(index = ln)
 
-    private fun IntProgression.hasNotTraversed(msg: Message?) = true
+    private fun IntProgression.hasNotTraversed(msg: Message?): Boolean = true
 
     private fun Runnable.exec(isIdle: Boolean = true) {
         markTagForClkExec()
@@ -111,21 +111,21 @@ internal open class Clock(
             synchronize(block = ::run)
         else run() }
 
-    private fun isSynchronized(msg: Message) =
+    private fun isSynchronized(msg: Message): Boolean =
         isSynchronized(msg.callback) or
         msg.asReference().isSynchronized()
 
-    private fun isSynchronized(callback: Runnable) =
+    private fun isSynchronized(callback: Runnable): Boolean =
         getAnyCoroutine(callback).asReference().isSynchronized() or
         callback.asReference().isSynchronized() or
         callback::run.isSynchronized()
 
-    private fun AnyKCallable.isSynchronized() =
+    private fun AnyKCallable.isSynchronized(): Boolean =
         annotations.any(::filterIsSynchronized)
 
     private lateinit var hLock: Lock
 
-    override fun <R> synchronize(lock: BaseState?, block: () -> R) =
+    override fun <R> synchronize(lock: BaseState?, block: () -> R): R =
         with(hLock) {
         synchronized(switch(lock, block)) {
             unlock(Closed::invoke)
@@ -133,37 +133,39 @@ internal open class Clock(
             release(it, Open::invoke)
         } } }
 
-    override fun BaseState.from(ref: BaseState) = TODO()
+    override fun BaseState.from(ref: BaseState): BaseState = TODO()
 
-    override val descriptor
+    override val descriptor: MessageDescriptor
         get() = object : MessageDescriptor {
-            override fun <A : BaseState, B : BaseState> A.onValueChanged(value: B, block: BaseDescriptor.(BaseState) -> Any?) = TODO()
+            context(_: AnyDescriptor)
+            override fun <A : BaseState, B : BaseState> A.onValueChanged(value: B, block: BaseDescriptor.(BaseState) -> Any?): BaseDescriptor = TODO()
         }
 
-    override fun adjust(index: ClockIndex) = when (index) {
+    override fun adjust(index: ClockIndex): Int =
+        when (index) {
         is Int -> index
         else -> getEstimatedIndex(index) }
 
-    private fun getEstimatedIndex(delay: ClockIndex) = queue.size
+    private fun getEstimatedIndex(delay: ClockIndex): Int = queue.size
 
     private var sLock = Any()
 
-    override fun attach(step: Runnable, vararg args: Any?) =
-        synchronized<Unit>(sLock) { with(queue) {
+    override fun attach(step: Runnable, vararg args: Any?): Unit =
+        synchronized(sLock) { with(queue) {
             add(step)
             markTagsForClkAttach(step, size) } }
 
-    override fun attach(index: ClockIndex, step: Runnable, vararg args: Any?) =
-        synchronized<Unit>(sLock) {
+    override fun attach(index: ClockIndex, step: Runnable, vararg args: Any?): Unit =
+        synchronized(sLock) {
             queue.add(index.toInt(), step)
             // remark items in queue for adjustment
             markTagsForClkAttach(step, index) }
 
-    @JvmField var post = fun(callback: Runnable) =
+    @JvmField var post: RunnableToAnyFunction = fun(callback: Runnable) =
         handler?.post(callback)
         ?: attach(callback)
 
-    @JvmField var postAhead = fun(callback: Runnable) =
+    @JvmField var postAhead: RunnableToAnyFunction = fun(callback: Runnable) =
         handler?.postAtFrontOfQueue(callback)
         ?: attach(0, callback)
 
@@ -206,7 +208,7 @@ internal open class Clock(
 
                 override fun contains(element: Thread): Boolean = TODO()
 
-                override val size
+                override val size: Int
                     get() = Companion.size
             }
             queue = mutableListOf()
@@ -225,7 +227,7 @@ internal open class Clock(
 
         @JvmStatic fun <R : Runnable, T> getCoroutine(callback: R): (suspend CoroutineScope.() -> T)? = null
 
-        @JvmStatic fun <R : Runnable> getAnyCoroutine(callback: R) = getCoroutine<R, Any?>(callback)
+        @JvmStatic fun <R : Runnable> getAnyCoroutine(callback: R): (suspend CoroutineScope.() -> Any?)? = getCoroutine(callback)
 
         @JvmStatic fun <R> getMessage(step: suspend () -> R): Message? = null
 
@@ -245,23 +247,24 @@ internal open class Clock(
 
         @JvmStatic fun <T> getTime(step: suspend () -> T): Time? = null
 
-        @JvmStatic fun startSafely() = apply {
+        @JvmStatic fun startSafely(): Clock? = apply {
             if (isNotStarted) start() }
 
-        @JvmStatic val isRunning
+        @JvmStatic val isRunning: Boolean
             get() = clock?.isRunning.isTrue()
 
-        @JvmStatic val isNotRunning
+        @JvmStatic val isNotRunning: Boolean
             get() = clock?.isRunning.isNotTrue()
 
-        @JvmStatic fun quit() = clock?.quit()
+        @JvmStatic fun quit(): Boolean? = clock?.quit()
 
-        @JvmStatic fun apply(block: Clock.() -> Unit) = clock?.apply(block)
-        @JvmStatic fun <R> run(block: Clock.() -> R) = clock?.run(block)
+        @JvmStatic fun apply(block: Clock.() -> Unit): Clock? = clock?.apply(block)
+        @JvmStatic fun <R> run(block: Clock.() -> R): R? = clock?.run(block)
     }
 }
 
 private typealias HandlerFunction = Clock.(Message) -> ClockTransactionIdentityType
+private typealias RunnableToAnyFunction = (Runnable) -> Any
 private typealias RunnableList = MutableList<Runnable>
 private typealias RunnableGrid = MutableList<RunnableList>
 

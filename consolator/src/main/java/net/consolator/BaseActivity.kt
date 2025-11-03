@@ -19,9 +19,9 @@ sealed class BaseActivity : SchedulerActivity() {
     /** Network callback disabler function. */
     private var disableNetworkCallbacks: LifecycleOwnerWork? = null
 
-    final override val isNetworkCallbackEnabled
+    final override val isNetworkCallbackEnabled: Boolean
         get() = enableNetworkCallbacks.isNotNullValue()
-    final override val isNetworkCallbackDisabled
+    final override val isNetworkCallbackDisabled: Boolean
         get() = enableNetworkCallbacks.isNullValue()
 
     /** Sets all network callback functions. */
@@ -72,16 +72,16 @@ sealed class BaseActivity : SchedulerActivity() {
             getBoolean(ENABLE_NETWORK_CALLBACKS_KEY))
             this@BaseActivity.setNetworkCallbacks() } }
 
-    final override fun Bundle?.enableNetworkCallbacks() =
+    final override fun Bundle?.enableNetworkCallbacks(): Bundle =
         requireLastSavedInstanceState()
         .applyPutBoolean(ENABLE_NETWORK_CALLBACKS_KEY)
 
-    final override fun Bundle?.disableNetworkCallbacks() =
+    final override fun Bundle?.disableNetworkCallbacks(): Bundle =
         requireLastSavedInstanceState()
         .applyRemove(ENABLE_NETWORK_CALLBACKS_KEY)
 
     /** Requires and sets the saved instance state. */
-    internal fun Bundle?.requireLastSavedInstanceState() =
+    internal fun Bundle?.requireLastSavedInstanceState(): Bundle =
         this ?: Bundle(5).applyPutBoolean(INIT_INSTANCE_STATE_KEY, true).also { lastSavedInstanceState = it }
 
     /** The last saved instance state. */
