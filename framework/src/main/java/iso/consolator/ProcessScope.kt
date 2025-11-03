@@ -6,9 +6,8 @@ package iso.consolator
 sealed interface ProcessScope
 
 internal fun <I : ProcessScope> I.windDown() {
-    when (this) {
-        is HandlerScope -> windDown()
-    } }
+    if (this is HandlerScope) windDown()
+}
 
 private fun HandlerScope.windDown() {
     Clock.apply {
@@ -20,8 +19,6 @@ private fun newThread(priority: Int, target: Runnable) = Thread(target).also { i
 
 internal val onMainThread get() = currentThread.isMainThread
 
-// include runnable as context parameter
-@Suppress("warnings")
 val currentThread
     get() = Thread.currentThread()
 

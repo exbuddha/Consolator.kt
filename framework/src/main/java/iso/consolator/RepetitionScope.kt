@@ -187,19 +187,19 @@ private inline fun <I : CoroutineScope, B : BooleanType> I.invokeAddedSuspendedS
 private inline fun <I : CoroutineScope, B : BooleanType> I.invokeAddedSuspendedJobIsActive(job: Job, noinline predicate: (suspend () -> B)?) =
     addedSuspendedJobIsActive(job) { predicate.isTrue() }
 
-// convert to contextual function with coroutine scope as context parameter
-private fun <I : CoroutineScope, R> (suspend () -> R).implicitlySuspended(scope: I /* = Implicit<I>() */): suspend I.() -> R =
+context(_: I)
+private fun <I : CoroutineScope, R> (suspend () -> R).implicitlySuspended(): suspend I.() -> R =
     { this@implicitlySuspended() }
 
-// use coroutine scope as context parameter
+context(_: I)
 private suspend fun <I : CoroutineScope> I.delayOrYield(dt: Time) =
     onActive { SchedulerScope.delayOrYield(dt) }
 
-// use coroutine scope as context parameter
+context(_: I)
 private suspend inline fun <I : CoroutineScope, reified T : TimeoutCancellation> I.delayOrTimeout(dt: Time, downtime: Time, msg: String?, cause: Throwable?) =
     onActive { SchedulerScope.delayOrTimeout<T>(dt, downtime, msg, cause) }
 
-// use coroutine scope as context parameter
+context(_: I)
 private suspend inline fun <I : CoroutineScope, reified T : TimeoutCancellation> I.delayOrTimeout(dt: Time, downtime: Time, crossinline ex: (AnyArray) -> T, vararg args: Any?) =
     onActive { SchedulerScope.delayOrTimeout(dt, downtime, ex, *args) }
 

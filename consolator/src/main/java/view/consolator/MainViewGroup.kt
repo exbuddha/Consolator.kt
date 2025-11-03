@@ -14,15 +14,15 @@ internal abstract class MainViewGroup(context: Context) : BaseViewGroup(context)
         super.onDetachedFromWindow()
     }
 
-    // convert view to context parameter
-    protected fun <T : ViewStateCoordinator, V : MainViewGroup> T.revise(view: V, state: ViewState) =
-        with(view) {
-        determine(state,
-            { view.onViewStateChanged(it) },
-            { view.onViewStateChanged(it) }) }
+    context(_: DirectViewStateDescriptor, view: V)
+    protected fun <T : ViewStateCoordinator, V : MainViewGroup> T.revise(state: ViewState) =
+        with(view) { with(state) {
+        determine(
+            { onViewStateChanged(it) },
+            { onViewStateChanged(it) }) } }
 
-    // include descriptor as context parameter
-    protected inline fun <T : ViewStateCoordinator, S : ViewState, R> T.determine(state: S, group: GroupController.(S) -> R, shared: SharedController.(S) -> R) =
+    context(_: DirectViewStateDescriptor, state: S)
+    private inline fun <T : ViewStateCoordinator, S : ViewState, R> T.determine(group: GroupController.(S) -> R, shared: SharedController.(S) -> R) =
         when (this) {
             is ViewCoordinator<*,*> ->
                 (this as GroupController).group(state)

@@ -28,11 +28,9 @@ import net.consolator.DefaultFragment.ReactiveFragment
 @Coordinate
 @Tag(DEFAULT_FRAGMENT)
 internal open class DefaultFragment : BaseFragment(), LifecycleProvider {
-    /** @suppress
-     *
+    /**
      * Removes and adds the main view.
      */
-    @Suppress("warnings")
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?) =
         inflater.inflate(contentLayoutId, container, false).also { view ->
         if (container !== null)
@@ -49,7 +47,6 @@ internal open class DefaultFragment : BaseFragment(), LifecycleProvider {
                     override fun <T> set(key: Int?, value: T) = TODO()
                 }) }
 
-    /** @suppress */
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         with(savedInstanceState) {
@@ -88,7 +85,6 @@ internal open class DefaultFragment : BaseFragment(), LifecycleProvider {
         ABORT_NAV_MAIN_UI ->
             cancel() } }
 
-    /** @suppress */
     override fun onDestroy() {
         onDestroyTail?.invoke()
         super.onDestroy()
@@ -111,15 +107,13 @@ internal open class DefaultFragment : BaseFragment(), LifecycleProvider {
                 isCrossObjectProviderEnabled = true
                 isCrossFunctionProviderEnabled = true } } } }
 
-        /** @suppress
-         *
+        /**
          * Adds the main view group.
          */
         override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?) =
             super.onCreateView(inflater, container, savedInstanceState)?.also { view ->
             addMainViewGroup(view, inflater, container, savedInstanceState) }
 
-        /** @suppress */
         override fun onDestroyView() {
             synchronizer = null
             super.onDestroyView()
@@ -145,8 +139,8 @@ internal open class DefaultFragment : BaseFragment(), LifecycleProvider {
                                     it.asViewState()
                                     .onValueTypeChanged(State.Resolved::class) {
                                     /* assign next state */
-                                    controller.revise(view, it) }
-                            } } }
+                                    with(view) { controller.revise(it) }
+                            } } } }
                             (controller as ViewModelConnector)
                             .attach(VM) } } }
                     }
@@ -178,7 +172,6 @@ internal open class DefaultFragment : BaseFragment(), LifecycleProvider {
         constructor(main: DefaultFragment? = null) : this(contentLayoutId)
 
         companion object {
-            // include active fragment as context parameter
             /** The state synchronizer. */
             @JvmStatic var synchronizer: StateCoordinator? = null
                 set(value) { field = when (value) {
@@ -221,59 +214,41 @@ internal open class DefaultFragment : BaseFragment(), LifecycleProvider {
             onDetachTail = onDetach
         }
 
-        /** @suppress */
         override fun onAttach(context: Context) {
             ::onAttachInit.relayWork(context) {
-            super.onAttach(context) }
-        }
+            super.onAttach(context) } }
 
-        /** @suppress */
         override fun onStart() {
             ::onStartInit.relayWork {
-            super.onStart() }
-        }
+            super.onStart() } }
 
-        /** @suppress */
         override fun onResume() {
             ::onResumeInit.relayWork {
-            super.onResume() }
-        }
+            super.onResume() } }
 
-        /** @suppress */
         override fun onPause() {
             ::onPauseTail.relayWork {
-            super.onPause() }
-        }
+            super.onPause() } }
 
-        /** @suppress */
         override fun onStop() {
             ::onStopTail.relayWork {
-            super.onStop() }
-        }
+            super.onStop() } }
 
-        /** @suppress */
         override fun onSaveInstanceState(outState: Bundle) {
             ::onSaveInstanceStateInit.relayWork(outState) {
-            super.onSaveInstanceState(it) }
-        }
+            super.onSaveInstanceState(it) } }
 
-        /** @suppress */
         override fun onDestroyView() {
             ::onDestroyViewTail.relayWork {
-            super.onDestroyView() }
-        }
+            super.onDestroyView() } }
 
-        /** @suppress */
         override fun onDestroy() {
             onDestroyTail?.invoke()
-            super.onDestroy()
-        }
+            super.onDestroy() }
 
-        /** @suppress */
         override fun onDetach() {
             onDetachTail?.invoke()
-            super.onDetach()
-        }
+            super.onDetach() }
 
         private var onAttachInit: ContextWork? = null
         private var onStartInit: FragmentWork? = null
@@ -300,7 +275,6 @@ internal open class DefaultFragment : BaseFragment(), LifecycleProvider {
         private fun AnyKMutableProperty.expire() = setter.call(null)
     }
 
-    /** @suppress */
     protected abstract inner class MigrationManager : SchedulerFragment.MigrationManager()
 
     override var isCrossObjectProviderEnabled = true

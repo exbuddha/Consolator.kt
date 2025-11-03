@@ -3,7 +3,7 @@
 
 package iso.consolator
 
-internal sealed interface Interceptor<in T> {
+sealed interface Interceptor<in T> {
     fun <S : T> T.intercept(vararg args: Any?): S
 
     companion object : BaseInterceptor, Validator {

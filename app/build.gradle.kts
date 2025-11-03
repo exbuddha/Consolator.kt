@@ -5,6 +5,7 @@ plugins {
 
 android {
     namespace = "app.consolator"
+
     compileSdk {
         version = release(36)
     }
@@ -19,7 +20,6 @@ android {
 
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName("debug")
             isMinifyEnabled = false
         }
     }
@@ -49,7 +49,6 @@ kotlin {
 
 dependencies {
     implementation(project(":context"))
-    implementation(project(":database"))
     implementation(project(":framework"))
 
     implementation(libs.androidx.activity)

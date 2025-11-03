@@ -5,6 +5,7 @@ plugins {
 
 android {
     namespace = "iso.consolator"
+
     compileSdk {
         version = release(36)
     }
@@ -35,12 +36,14 @@ kotlin {
             progressiveMode = true
             freeCompilerArgs.addAll(
                 "-Xjvm-default=all",
-                "-Xcontext-parameters")
+                "-Xcontext-parameters",
+            )
         }
     }
 }
 
 dependencies {
+    implementation(project(":abstract"))
     implementation(project(":context"))
     implementation(project(":database"))
 

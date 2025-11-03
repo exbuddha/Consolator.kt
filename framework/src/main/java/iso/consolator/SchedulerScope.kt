@@ -39,6 +39,7 @@ import kotlin.coroutines.*
 import kotlin.reflect.*
 import kotlin.reflect.full.*
 import kotlinx.coroutines.*
+import kotlinx.coroutines.Runnable
 import kotlinx.coroutines.flow.*
 import androidx.core.content.ContextCompat.RECEIVER_EXPORTED
 import kotlinx.coroutines.Dispatchers.Default
@@ -54,7 +55,7 @@ interface BaseServiceScope : ResolverScope, ReferredContext, UniqueContext.Insta
             target.commitSuspend(
                 target,
                 this@invoke,
-                target.tag) // runtime error: tag is null
+                target.tag) // runtime error: tag is null  --  error requires to be re-evaluated after Kotlin 1.9
             } }
         return mode }
 
@@ -321,45 +322,52 @@ sealed interface SchedulerScope : ResolverScope {
                 predicate = downtime::isTimedOut,
                 block = { dt.blockOrYield() }) }
 
-        // convert job to context parameter here on and in scheduler step
-        // another context parameter can be used to optimize and restrict to call site functionality
-
+        context(_: LifecycleOwner, _: Job)
         @JvmStatic infix fun <R> Job?.then(next: suspend SchedulerScope.(Any?, Job) -> R) = result {
             attachConjunctionToElement(next) { last, next ->
                 last then next } }
 
+        context(_: LifecycleOwner, _: Job)
         @JvmStatic infix fun <R> Job?.after(prev: suspend SchedulerScope.(Any?, Job) -> R) = result {
             attachConjunctionToElement(prev) { last, prev ->
                 last after prev } }
 
+        context(_: LifecycleOwner, _: Job)
         @JvmStatic infix fun Job?.given(predicate: SchedulerPrediction) = result {
             attachPredictionToElement(predicate) { last, predicate ->
                 last given predicate } }
 
+        context(_: LifecycleOwner, _: Job)
         @JvmStatic infix fun Job?.given(predicate: Predicate) = result {
             attachPredictionToElement(predicate) { last, predicate ->
                 last given predicate } }
 
+        context(_: LifecycleOwner, _: Job)
         @JvmStatic infix fun Job?.unless(predicate: SchedulerPrediction) = result {
             attachPredictionToElement(predicate) { last, predicate ->
                 last unless predicate } }
 
+        context(_: LifecycleOwner, _: Job)
         @JvmStatic infix fun Job?.unless(predicate: Predicate) = result {
             attachPredictionToElement(predicate) { last, predicate ->
                 last unless predicate } }
 
+        context(_: LifecycleOwner, _: Job)
         @JvmStatic infix fun <R> Job?.otherwise(next: suspend SchedulerScope.(Any?, Job) -> R) = result {
             attachConjunctionToElement(next) { last, next ->
                 last otherwise next } }
 
+        context(_: LifecycleOwner, _: Job)
         @JvmStatic infix fun <R> Job?.onCancel(action: suspend SchedulerScope.(Any?, Job) -> R) = result {
             attachConjunctionToElement(action) { last, action ->
                 last onCancel action } }
 
+        context(_: LifecycleOwner, _: Job)
         @JvmStatic infix fun <R> Job?.onError(action: suspend SchedulerScope.(Any?, Job) -> R) = result {
             attachConjunctionToElement(action) { last, action ->
                 last onError action } }
 
+        context(_: LifecycleOwner, _: Job)
         @JvmStatic infix fun <R> Job?.onTimeout(action: suspend SchedulerScope.(Any?, Job) -> R) = result {
             attachConjunctionToElement(action) { last, action ->
                 last onTimeout action } }
@@ -487,17 +495,18 @@ sealed interface SchedulerScope : ResolverScope {
         @JvmStatic fun <R> changeGlobally(owner: LifecycleOwner, ref: WeakContext, member: KFunction<R>, stage: ContextStep) =
             commit { foregroundContext.stage(Triple(owner, ref, member) to stage) }
 
-        // with context parameters, convert to extension functions with implicit receivers from the call site
+        context(scope: I)
         @JvmStatic suspend inline fun <reified T : Resolver, I : CoroutineScope> I.defer(crossinline step: suspend T.() -> Any?) =
             step(this@defer as T) /* error! */
 
+        context(scope: I)
         @JvmStatic suspend inline fun <reified T : Resolver, I : CoroutineScope> I.defer(member: AnyKFunction, crossinline step: suspend T.() -> Any?) =
             step(this@defer as T) /* error! */
 
-        @JvmStatic suspend inline fun <reified T : Resolver, I : CoroutineScope> I.defer(receiver: I = this /* convert to context parameter */, member: AnyKFunction, crossinline step: suspend T.() -> Any?) =
+        context(scope: I)
+        @JvmStatic suspend inline fun <reified T : Resolver, I : CoroutineScope> I.defer(receiver: I = scope, member: AnyKFunction, crossinline step: suspend T.() -> Any?) =
             step(this@defer as T) /* error! */
 
-        // convert to contextual function by current job
         @JvmStatic suspend fun currentContext() =
             currentJob().getInstance(CONTEXT).asWeakContext()?.get()!!
 
@@ -667,6 +676,7 @@ sealed interface SchedulerScope : ResolverScope {
             else ->
                 currentThread.interrupt() }
 
+        context(_: ProcessScope)
         @JvmStatic val Thread.log
             get() = iso.consolator.log
 
@@ -700,6 +710,7 @@ sealed interface SchedulerScope : ResolverScope {
 
         @JvmStatic val EMPTY_STEP: SchedulerStep = { _, _ -> }
 
+        context(_: Implication<T>)
         override fun <T> Any.implicitly(): KCallable<T> = TODO()
 
         @JvmStatic fun findClass(className: String) = Class.forName(className).kotlin
@@ -709,6 +720,12 @@ sealed interface SchedulerScope : ResolverScope {
         override fun commit(step: AnyCoroutineStep): ResolverTransactionIdentityType =
             with(State) { onValueTypeChanged(Resolved::class) {
                 this@Companion().commit(step) } }
+
+        context(_: CoroutineScope)
+        override fun <T> withLazy(callable: KCallable<T>, block: T.(KCallable<T>) -> Any?): CoroutineScope {
+            // check for known global values, such as ::mainUncaughtExceptionHandler
+            // by active states, such as State[-1]
+            return super.withLazy(callable, block) }
     }
 
     override fun commit(step: AnyCoroutineStep) =
@@ -716,7 +733,7 @@ sealed interface SchedulerScope : ResolverScope {
 
     @Suppress("warnings")
     sealed interface Task<out R> {
-        // set task manager as context parameter
+        context(_: Manager<*>)
         fun implicitly(applied: Boolean = true, vararg args: Any?): Task<out R> =
             runWhen({ applied }) { with(Manager) { intercept(*args) } }
 
@@ -732,12 +749,11 @@ sealed interface SchedulerScope : ResolverScope {
 
         sealed interface Invokable<out R> : Task<R> {
             sealed interface ByTag<out R> : Invokable<R> {
-                // convert to contextual function with task and manager as parameter
+                context(_: Task<*>, _: Manager<*>)
                 operator fun invoke(tag: Tag = this.tag): R = TODO()
             }
         }
 
-        // convert to contextual function with task as parameter
         sealed interface Function<out T> : Task<T> {
             fun interface Single<in P1, out R> : Function<R>, suspend (P1) -> R {
                 override suspend fun invoke(p1: P1): R
@@ -843,64 +859,91 @@ sealed class CallableSchedulerScope : CallableResolverScope {
 
         override fun <I : LifecycleOwner> I.callBy(step: AnyKCallable, args: KParameterMap): Job? = currentThreadJob()
 
+        context(_: CoroutineScope)
         fun <I : LifecycleOwner, R> I.callSelfReferring(step: KCallable<R>, vararg args: Any?): Job? = currentThreadJob()
 
+        context(_: CoroutineScope)
         fun <I : LifecycleOwner, R> I.callSelfReferringBy(step: KCallable<R>, args: KParameterMap): Job? = currentThreadJob()
 
-        // include lifecycle owner in context parameters
-
+        context(_: LifecycleOwner)
         @JvmStatic infix fun <R> Job?.then(next: KCallable<R>) = this
 
+        context(_: LifecycleOwner)
         @JvmStatic infix fun <I : CoroutineScope, R> Job?.thenImplicitly(next: suspend I.(Any?, Job) -> R) = this
 
+        context(_: LifecycleOwner)
         @JvmStatic infix fun <I : CoroutineScope, R> Job?.thenSuspendedImplicitly(next: suspend (I, AnyArray?) -> R) = this
 
+        context(_: LifecycleOwner)
         @JvmStatic infix fun <R> Job?.after(prev: KCallable<R>) = this
 
+        context(_: LifecycleOwner)
         @JvmStatic infix fun <I : CoroutineScope, R> Job?.afterImplicitly(prev: suspend I.(Any?, Job) -> R) = this
 
+        context(_: LifecycleOwner)
         @JvmStatic infix fun <I : CoroutineScope, R> Job?.afterSuspendedImplicitly(prev: suspend (I, AnyArray?) -> R) = this
 
+        context(_: LifecycleOwner)
         @JvmStatic infix fun Job?.given(predicate: Predicate) = this
 
+        context(_: LifecycleOwner)
         @JvmStatic infix fun Job?.givenSuspended(predicate: Prediction) = this
 
+        context(_: LifecycleOwner)
         @JvmStatic infix fun <I : CoroutineScope, R : BooleanType> Job?.givenImplicitly(predicate: suspend I.(Any?, Job) -> R) = this
 
+        context(_: LifecycleOwner)
         @JvmStatic infix fun <I : CoroutineScope, R : BooleanType> Job?.givenSuspendedImplicitly(predicate: suspend (I, AnyArray?) -> R) = this
 
+        context(_: LifecycleOwner)
         @JvmStatic infix fun Job?.unless(predicate: Predicate) = this
 
+        context(_: LifecycleOwner)
         @JvmStatic infix fun Job?.unlessSuspended(predicate: Prediction) = this
 
+        context(_: LifecycleOwner)
         @JvmStatic infix fun <I : CoroutineScope, R : BooleanType> Job?.unlessImplicitly(predicate: suspend I.(Any?, Job) -> R) = this
 
+        context(_: LifecycleOwner)
         @JvmStatic infix fun <I : CoroutineScope, R : BooleanType> Job?.unlessSuspendedImplicitly(predicate: suspend (I, AnyArray?) -> R) = this
 
+        context(_: LifecycleOwner)
         @JvmStatic infix fun <R> Job?.otherwise(next: KCallable<R>) = this
 
+        context(_: LifecycleOwner)
         @JvmStatic infix fun <I : CoroutineScope, R> Job?.otherwiseImplicitly(next: suspend I.(Any?, Job) -> R) = this
 
+        context(_: LifecycleOwner)
         @JvmStatic infix fun <I : CoroutineScope, R> Job?.otherwiseSuspendedImplicitly(next: suspend (I, AnyArray?) -> R) = this
 
+        context(_: LifecycleOwner)
         @JvmStatic infix fun <R> Job?.onCancel(action: KCallable<R>) = this
 
+        context(_: LifecycleOwner)
         @JvmStatic infix fun <I : CoroutineScope, R> Job?.onCancelImplicitly(next: suspend I.(Any?, Job) -> R) = this
 
+        context(_: LifecycleOwner)
         @JvmStatic infix fun <I : CoroutineScope, R> Job?.onCancelSuspendedImplicitly(next: suspend (I, AnyArray?) -> R) = this
 
+        context(_: LifecycleOwner)
         @JvmStatic infix fun <R> Job?.onError(action: KCallable<R>) = this
 
+        context(_: LifecycleOwner)
         @JvmStatic infix fun <I : CoroutineScope, R> Job?.onErrorImplicitly(next: suspend I.(Any?, Job) -> R) = this
 
+        context(_: LifecycleOwner)
         @JvmStatic infix fun <I : CoroutineScope, R> Job?.onErrorSuspendedImplicitly(next: suspend (I, AnyArray?) -> R) = this
 
+        context(_: LifecycleOwner)
         @JvmStatic infix fun <R> Job?.onTimeout(action: KCallable<R>) = this
 
+        context(_: LifecycleOwner)
         @JvmStatic infix fun <I : CoroutineScope, R> Job?.onTimeoutImplicitly(next: suspend I.(Any?, Job) -> R) = this
 
+        context(_: LifecycleOwner)
         @JvmStatic infix fun <I : CoroutineScope, R> Job?.onTimeoutSuspendedImplicitly(next: suspend (I, AnyArray?) -> R) = this
 
+        context(_: LifecycleOwner)
         @JvmStatic infix fun Job?.commit(step: SchedulerStep): Job? = this
     }
 
@@ -1035,6 +1078,7 @@ internal object Scheduler : SchedulerScope, LiveStepReceiver.Synchronizer<LiveSt
 
     override val descriptor
         get() = object : StepDescriptor {
+            context(_: AnyDescriptor)
             override fun <A : AnyStep, B : AnyStep> A.onValueChanged(value: B, block: BaseStepDescriptor.(AnyStep) -> Any?) = TODO()
         }
 
@@ -1359,7 +1403,6 @@ internal fun Job.setInstance(tag: TagType, value: Any?) {
     // addressable layer work
     value.markTag(tag, jobs) }
 
-// optionally, include function set as context parameter
 private var jobs: FunctionSet? = null
 
 private var livesteps: FunctionSet? = null
@@ -1380,6 +1423,7 @@ internal open class Item<R>(target: KCallable<R>) : Reference.Stub<R>(target), A
     open fun onSaveIndex(index: Number) = this
 
     companion object Scope : ImplicitScope<Tag>, ImplicitResultScope {
+        context(_: Implication<T>)
         override fun <T> Tag.implicitly(): KCallable<T> = TODO()
 
         override fun <S : AnyKCallable> AnyKCallable.intercept(vararg args: Any?): S = TODO()
@@ -1455,6 +1499,7 @@ internal open class Item<R>(target: KCallable<R>) : Reference.Stub<R>(target), A
         this.value.tag?.let { register(it) } }
 
     internal companion object Cache : ImplicitScope<CoroutineScope>, MutableMap<Any, AnyKCallable> by mutableMapOf() {
+        context(_: Implication<T>)
         override fun <T> CoroutineScope.implicitly(): KCallable<T> = TODO()
 
         @JvmStatic private fun <V> Value<V>.register(tag: Tag) = set(tag, this)
@@ -1474,7 +1519,7 @@ internal open class Item<R>(target: KCallable<R>) : Reference.Stub<R>(target), A
         @JvmStatic inline fun <reified V : Any> findByTag(target: KCallable<V>, transform: (Tag, Any) -> TagType? = ::matchByTagOrValue, comparator: TagType.(Any?) -> Boolean = TagType::equals) =
             filterByTag(target, transform, comparator)?.firstOrNull()?.call().asType<V>()
 
-        @JvmStatic private fun matchByTagOrValue(tag: Tag, key: Any) =
+        @JvmStatic fun matchByTagOrValue(tag: Tag, key: Any) =
             if (key is Tag) key.id else key.asTagType()
 
         @JvmStatic private fun matchByTag(tag: Tag, key: Any) =
@@ -1910,7 +1955,7 @@ fun interface AnySchedulerFunction : suspend (CoroutineScope, Any?, Job) -> Any?
 internal typealias SchedulerPrediction = suspend CoroutineScope.(Any?, Job) -> PredictionIdentityType
 fun interface SchedulerPredicate : suspend (CoroutineScope, Any?, Job) -> PredicateIdentityType
 
-internal typealias SchedulerStepIdentityType = Unit
+internal typealias SchedulerStepIdentityType = Any?
 
 internal typealias JobContinuation = suspend (Any?, Any?) -> JobContinuationDefaultIdentityType
 internal typealias AnyJobContinuation = suspend (Any?, Any?) -> JobContinuationIdentityType
@@ -1934,7 +1979,7 @@ private typealias PropertyBuildConditionIdentityType = Any?
 private typealias AnyItem = Item<*>
 internal typealias FunctionSet = MutableSet<FunctionItem>
 internal typealias FunctionSetPointer = () -> FunctionSet
-private typealias FunctionItem = TagTypeToAnyPair
+internal typealias FunctionItem = TagTypeToAnyPair
 private typealias TagTypeToAnyPair = Pair<TagTypePointer, Any>
 
 internal typealias CoroutineFunction = (CoroutineStep) -> Any?

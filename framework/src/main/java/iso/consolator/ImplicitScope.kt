@@ -3,23 +3,25 @@
 
 package iso.consolator
 
-import kotlin.reflect.KCallable
-import kotlin.reflect.KClass
+import kotlinx.coroutines.*
+import kotlin.reflect.*
 
 internal typealias DefaultScope = ImplicitScope<Any>
 internal typealias DefaultCallableScope = CallableScope<Any?>
 internal typealias ImplicitResultScope = ResultScope<Any?>
 
 internal sealed interface ImplicitScope<in S> {
-    // set S or Implication<T> as context parameter
+    context(_: Implication<T>)
     fun <T> S.implicitly(): KCallable<T>
 
-    fun <T> withLazy(callable: KCallable<T>, block: T.(KCallable<T>) -> Any?): ImplicitScope<in S> {
-        // route from current scope to callable reference in order to find intent for the block call
+    context(scope: CoroutineScope)
+    fun <T> withLazy(callable: KCallable<T>, block: T.(KCallable<T>) -> Any?): CoroutineScope {
+        // route from current scope, such as SchedulerScope, to callable reference in order to find intent for the block call
         callable.call().block(callable)
-        return this }
+        return scope }
 
     companion object : DefaultScope, Implication<Any?> {
+        context(_: Implication<T>)
         override fun <T> Any.implicitly(): KCallable<T> = asReference().intercept()
 
         @Suppress("UNCHECKED_CAST")
@@ -27,7 +29,7 @@ internal sealed interface ImplicitScope<in S> {
     }
 }
 
-internal sealed interface Implication<in T> : Interceptor<KCallable<T>> {
+sealed interface Implication<in T> : Interceptor<KCallable<T>> {
     override fun <S : KCallable<T>> KCallable<T>.intercept(vararg args: Any?): S
 }
 
@@ -44,7 +46,8 @@ internal sealed interface TransactionalResult
 internal sealed interface CallableScope<in R> : ResultScope<R>
 
 internal interface ImplicitCallableScope : DefaultCallableScope, ImplicitScope<AnyKCallable> {
-    override fun <T> AnyKCallable.implicitly(): KCallable<T> = asTypeUnsafe()
+    context(_: Implication<T>)
+    override fun <T> AnyKCallable.implicitly(): KCallable<T> = this.asTypeUnsafe()
 
     companion object : ImplicitCallableScope
 }
@@ -52,6 +55,7 @@ internal interface ImplicitCallableScope : DefaultCallableScope, ImplicitScope<A
 internal sealed interface DeterminedContext
 
 internal sealed interface SelectiveContext<in S> : ImplicitScope<KCallable<S>>, DeterminedContext {
+    context(_: Implication<T>)
     override fun <T> KCallable<S>.implicitly(): KCallable<T> = TODO()
 }
 
@@ -69,32 +73,3 @@ internal inline fun <I : U, U, T, S : (() -> T)?> I.select(operator: U.((S) -> B
     operator {
         it !== null && predicate(it) and condition(it()) }
     return value }
-
-internal inline fun <I : U, U, K, T : K, S : (() -> T)?> I.select(operator: U.((S) -> Boolean) -> S, noinline predicate: (S, ((T?) -> Any?)?) -> Boolean = { it, _ -> trueWhenNotNull(it) }, noinline condition: (K?) -> Boolean = ::trueWhenNotNull, lock: Any? = null, getter: S? = null, noinline setter: ((T?) -> Any?)? = null, noinline isolate: ((K?) -> T?)? = null, determinant: S? = null): T? {
-    var value: T? = null
-    val accept: (T?) -> Unit =
-        { value = it }
-    val receive =
-        isolate?.run {
-            { it.run(::invoke)
-                .run(accept) } }
-        ?: accept
-    val get =
-        getter ?: { value }
-    val set =
-        setter?.run {
-            { it.apply(::invoke)
-                .apply(receive) } }
-        ?: receive
-    val filter: (S) -> T? = {
-        predicate(it, set)
-        .then(get) }
-    val block =
-        lock?.run { {
-            synchronized(lock) { filter(it) } } }
-        ?: filter
-    operator {
-        block(it).let { value ->
-            condition(value)
-            .alsoOnTrue { set(value) } } }
-    return (determinant ?: get)() }

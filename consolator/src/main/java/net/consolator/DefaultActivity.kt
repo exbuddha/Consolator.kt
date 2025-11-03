@@ -10,7 +10,6 @@ import iso.consolator.annotation.*
 import iso.consolator.component.SchedulerActivity
 import iso.consolator.component.SchedulerFragment
 import view.consolator.*
-import android.annotation.SuppressLint
 
 /**
  * Default scheduler activity handles base fragment creation.
@@ -83,10 +82,10 @@ open class DefaultActivity : BaseActivity(), ContentLayoutReceiver, LifecyclePro
     @Key(3)
     internal inline fun <reified F : SchedulerFragment> addContainerView(@IdRes containerViewId: Int, reorderingAllowed: Boolean = true, visible: Boolean = true, savedInstanceState: Bundle? = null) {
         if (containerViewId != 0)
-        supportFragmentManager.commit {
-            setReorderingAllowed(reorderingAllowed)
-            add<F>(containerViewId, args = savedInstanceState)
-            setVisible(visible) } }
+            supportFragmentManager.commit {
+                setReorderingAllowed(reorderingAllowed)
+                add<F>(containerViewId, args = savedInstanceState)
+                setVisible(visible) } }
 
     /**
      * Sets layout resource ID in saved instance state.

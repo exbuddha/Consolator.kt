@@ -39,26 +39,21 @@ internal class Sequencer : Synchronizer<AnyTriple>, Transactor<SequencerIndex, B
     override var queue: IntMutableList = mutableListOf()
     private var seq: LiveSequence = mutableListOf()
 
-    @Suppress("warnings")
     private val ln_init = -1
 
-    @Suppress("warnings")
     private val ln_start = 0
 
-    @Suppress("warnings")
     private val ln_end get() = ln_term - 1
 
-    @Suppress("warnings")
     private val ln_term get() = seq.size
 
-    @Suppress("warnings")
     private val ln_step = 1
 
     private var ln = ln_init
         get() = queue.firstOrNull() ?: (field + ln_step)
 
     private val work
-        get() = synchronize { adjust(queue.removeFirst()) }
+        get() = synchronize { adjust(queue.removeAt(0)) }
             .also(::ln::set)
 
     private var latestStep: LiveStep? = null
@@ -81,6 +76,7 @@ internal class Sequencer : Synchronizer<AnyTriple>, Transactor<SequencerIndex, B
 
     override val descriptor
         get() = object : SequenceDescriptor {
+            context(_: AnyDescriptor)
             override fun <A : AnyTriple, B : AnyTriple> A.onValueChanged(value: B, block: BaseSequenceDescriptor.(AnyTriple) -> Any?) = TODO()
         }
 
@@ -299,7 +295,6 @@ internal class Sequencer : Synchronizer<AnyTriple>, Transactor<SequencerIndex, B
 
         private fun AnyTriple.getTag() = if (isLiveCall) tag.id else null /* or lookup in temps */
 
-        @Suppress("warnings")
         const val attached_already = -1
 
         suspend fun start() = sequencer { start() }

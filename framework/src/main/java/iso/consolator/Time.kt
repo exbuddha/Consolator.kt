@@ -7,9 +7,12 @@ import ctx.consolator.now
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.yield
 
-// include a contextual function with last time as parameter (also, one with time interval for adjusting inside time capsules)
-// include a contextual function with scheduler scope as parameter type
-// to report significant times back to other contexts (intercepting certain positives - extremely low level)
+context(_: I)
+internal fun <I : SchedulerScope> Time.adjust(last: Time): Time = TODO()
+
+context(_: I)
+internal fun <I : TimeInterval> Time.adjust(last: Time): Time = TODO()
+
 internal fun Time.adjust(last: Time) =
     (- runWhen({ this@adjust < last }, {
         if (last.isNegativeTime) {

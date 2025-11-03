@@ -14,7 +14,6 @@ import java.lang.ref.WeakReference
 interface ReferredContext {
     var ref: WeakContext?
 
-    /** @suppress internal */
     fun <T : Context> WeakReference<out T>?.receive(context: T) =
         this ?: WeakReference(context)
 }
@@ -24,7 +23,6 @@ fun Context.asWeakReference() =
     if (this is ReferredContext) ref!!
     else run(::WeakReference)
 
-/** @suppress internal */
 typealias WeakContext = WeakReference<out Context>
 
 /**
@@ -47,9 +45,7 @@ interface UniqueContext<ID> {
 
 /**
  * Returns the current local calendar time.
- *
- *  @sample now
  */
-fun now() = java.util.Calendar.getInstance().timeInMillis
+external fun now(): Long
 
-const val JVM_CLASS_NAME = "Companion"
+const val JVM_CLASS_NAME = abs.consolator.JVM_CLASS_NAME

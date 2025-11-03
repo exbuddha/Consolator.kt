@@ -1,4 +1,4 @@
-@file:JvmName("Reflection")
+@file:JvmName("Reflect")
 @file:JvmMultifileClass
 
 package iso.consolator
@@ -6,6 +6,8 @@ package iso.consolator
 import kotlin.reflect.*
 import kotlin.reflect.full.*
 import kotlin.reflect.jvm.*
+
+fun findClass(className: String) = Class.forName(className).kotlin
 
 internal inline fun <reified T> AnyArray.runCall(callable: KCallable<T>) =
     callable.call(*this)

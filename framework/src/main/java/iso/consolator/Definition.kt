@@ -6,15 +6,21 @@ package iso.consolator
 import android.view.*
 import androidx.lifecycle.*
 
+// universally known truth for an intent, outcome, or cause for actions
+internal interface Truth {
+    context(_: Resolver)
+    fun solve(): Routine
+}
+
 // internally understood cause for an action
-enum class Reason {
+enum class Reason : Truth, Rationale {
     ;
 
     interface Record
 }
 
 // use map as implicit context receiver
-internal fun <M : Map<K, V>, K, V, R> M.interpreted(reason: Rationale): R = TODO()
+internal fun <M : Map<K, V>, K, V, R : Truth> M.interpreted(reason: Rationale): R = TODO()
 
 typealias Rationale = Comparable<Reason>
 
@@ -33,7 +39,7 @@ sealed interface ActionIntent
 // expectancy then takes on a humanly intelligent form of speech and thinking and sets the tone for the AI layer
 // functions in this interface define their context parameter specific to their scope and use cases
 sealed interface Descriptor<in S, out T> {
-    // include descriptor as context parameter
+    context(_: AnyDescriptor)
     fun <A : S, B : S> A.onValueChanged(value: B, block: Descriptor<S, T>.(T) -> Any?) = this@Descriptor
 }
 
@@ -51,7 +57,7 @@ interface Coordinator<S, out L : S> : Refactor<S> {
     fun <R> synchronize(lock: S? = null, block: () -> R): R
 
     // external interface optimized for expressive logic (reactivity and flexibility) isolated by freedom on axis of concurrency
-    // use context parameter allowing calls only from state descriptor and registered views and to support active contexts
+    // possibly use context parameter allowing calls only from state descriptor and registered views and to support active contexts
     val descriptor: Descriptor<S, L>?
 }
 
@@ -60,7 +66,7 @@ sealed interface ContextCoordinator<S, out L : S> : Coordinator<S, L> {
     // connects to internal state referables
     fun S.acquire(): S
 
-    // restrict call site access to active context by context parameter
+    // restrict call site access to active context by context parameter (optional)
     infix fun S.issue(cmd: (S, L) -> ActionIntent)
 }
 
@@ -82,13 +88,13 @@ typealias ViewStateCoordinator = Coordinator<State, ViewState>
 
 interface ViewCoordinator<in V : ViewGroup, out S : ViewState> : ContraVariantContextCoordinator<V, State, S>, ViewModelConnector {
     // notifies view or view group - coordinates response internally
-    // convert to contextual function with view state as parameter type
+    context(_: ViewState)
     fun <S : ViewState> V.onViewStateChanged(vararg occurrence: S): Array<out S>
 }
 
 interface ViewGroupCoordinator<out U : View, out S : ViewState> : CoVariantContextCoordinator<U, State, S>, ViewModelConnector {
     // notifies view connected to another view or view group - broadcasts response externally
-    // convert to contextual function with view group and view state as parameter type
+    context(_: ViewGroup, _: ViewState)
     fun <V : View, S : ViewState> V.onViewStateChanged(vararg occurrence: S): Array<out S>
 }
 

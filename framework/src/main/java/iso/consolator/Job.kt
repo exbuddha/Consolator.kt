@@ -170,7 +170,7 @@ private fun Job.currentCoroutineStep(): AnyCoroutineStep = TODO()
 internal suspend fun currentJob() = currentCoroutineContext().job
 internal fun currentThreadJob() = ::currentJob.block()
 
-private val Job?.isNotActive get() = this === null || !isActive
+internal val Job?.isNotActive get() = this === null || !isActive
 
 internal fun Any?.toJobId() = asJob().hashCode()
 

@@ -79,7 +79,7 @@ internal open class Clock(
 
     override fun commit(step: Message) =
         if (isSynchronized(step))
-            synchronize(State of step) {
+            synchronize(iso.consolator.State of step) {
                 if (queue.run(step, false))
                     step.callback
                         .markTagForClkExec()
@@ -137,6 +137,7 @@ internal open class Clock(
 
     override val descriptor
         get() = object : MessageDescriptor {
+            context(_: AnyDescriptor)
             override fun <A : BaseState, B : BaseState> A.onValueChanged(value: B, block: BaseDescriptor.(BaseState) -> Any?) = TODO()
         }
 

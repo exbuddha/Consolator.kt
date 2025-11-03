@@ -10,8 +10,7 @@ import kotlinx.coroutines.*
  */
 @Coordinate
 open class DefaultApplication : BaseApplication() {
-    /** @suppress
-     *
+    /**
      * Calls [begin].
      *
      *  @sample onCreate

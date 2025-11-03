@@ -15,13 +15,13 @@ import ctx.consolator.*
 import data.consolator.*
 import data.consolator.dao.*
 import iso.consolator.annotation.*
+import iso.consolator.component.MemoryManager
 import iso.consolator.component.SchedulerApplication
 import iso.consolator.exception.SchedulerIntent
 import iso.consolator.reflect.*
 import java.lang.*
 import kotlin.reflect.*
 import kotlinx.coroutines.*
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
 internal lateinit var instance: Application
@@ -47,16 +47,20 @@ internal var foregroundLifecycleOwner: LifecycleOwner? = null
         field = ::foregroundLifecycleOwner.receiveUniquely(value) }
 
 internal val processLifecycleScope
-    get() = ProcessLifecycleOwner.get().lifecycleScope
+    get() = processLifecycleOwner.lifecycleScope
 
-/* set instance as context parameter */
+private val processLifecycleOwner
+    get() = ProcessLifecycleOwner.get()
+
 @Throws
-fun Application.touchContext(context: Context = this) {
+context(instance: Application)
+fun touchContext(context: Context = instance) {
     if (context is MainUncaughtExceptionHandler) {
         mainUncaughtExceptionHandler = context
             .apply(Thread::setDefaultUncaughtExceptionHandler)
         State[-1] = State.Resolved }
-    if (this is SchedulerApplication)
+    if (instance is SchedulerApplication)
+        with(processLifecycleOwner) {
         currentThread.from(
             APP_INIT,
             SchedulerScope) {
@@ -65,7 +69,7 @@ fun Application.touchContext(context: Context = this) {
             .withLazy(::mainUncaughtExceptionHandler) {
             setTo(
                 ::mainUncaughtExceptionHandler,
-                ::uncaughtException.tag) } } } }
+                ::uncaughtException.tag) } } } } }
 
 @Tag(UNCAUGHT_SHARED)
 internal lateinit var mainUncaughtExceptionHandler: MainUncaughtExceptionHandler
@@ -111,6 +115,11 @@ internal fun Context.changeBroadly(ref: WeakContext = asWeakReference(), stage: 
 
 internal fun Context.changeGlobally(owner: LifecycleOwner, ref: WeakContext = asWeakReference(), stage: ContextStep) =
     commit { stage(this) }
+
+context(_: Context)
+fun <I : MemoryManager> commit(level: Int) {}
+
+fun <I : Resolver> commit(vararg context: Any?) {}
 
 internal suspend fun updateNetworkState() {
     NetworkDao {

@@ -13,10 +13,9 @@ import iso.consolator.component.SchedulerApplication
 sealed class BaseApplication : SchedulerApplication(), MainUncaughtExceptionHandler {
     init {
         disableLogger()
-        apply(::touchContext) }
+        touchContext() }
 
-    /** @suppress
-     *
+    /**
      * Starts the base service.
      *
      * Service will be started only if it is enabled by scheduler application.
@@ -40,7 +39,7 @@ sealed class BaseApplication : SchedulerApplication(), MainUncaughtExceptionHand
     @Key(-1)
     final override fun getLastUncaughtExceptionType(depth: Int) =
         withUncaughtSharedPrefs { trySafelyForResult {
-        SchedulerScope.findClass(getCountedStringOrNull(EX_TYPE, depth) ?: return null) } }
+        findClass(getCountedStringOrNull(EX_TYPE, depth) ?: return null) } }
 
     @Key(-2)
     final override fun getLastUncaughtExceptionMessage(depth: Int) =
@@ -86,17 +85,17 @@ sealed class BaseApplication : SchedulerApplication(), MainUncaughtExceptionHand
         const val ACTION_MIGRATE_APP: Short = 1
 
         /** KV map key in shared preferences for exception type. */
-        private const val EX_TYPE = "$EXCEPTION"
+        private const val EX_TYPE = "a"
         /** KV map key in shared preferences for exception message. */
-        private const val EX_MSG = "$EXCEPTION_MESSAGE"
+        private const val EX_MSG = "c"
         /** KV map key in shared preferences for exception time. */
-        private const val EX_TIME = "$NOW"
+        private const val EX_TIME = "d"
         /** KV map key in shared preferences for exception context time. (start time) */
-        private const val EX_CTX_TIME = "$START"
+        private const val EX_CTX_TIME = "e"
         /** KV map key in shared preferences for exception thread state. (`true` if it had occurred on main thread) */
-        private const val EX_THREAD = "$MAIN"
+        private const val EX_THREAD = "f"
         /** Shared preferences name for uncaught exception. */
-        private const val UNCAUGHT_EX = "$UNCAUGHT"
+        private const val UNCAUGHT_EX = "b"
 
         /** Exception KV map. */
         private val EX_KVMAP: SharedPrefsExceptionKVMap = arrayOf(

@@ -68,16 +68,16 @@ internal inline fun <reified K, reified T, R : T, S : T> T.runWhenType(noinline 
 internal inline fun <reified K, reified T, R : T, S : T> T.runUnlessType(noinline predicate: (T) -> Boolean, block: T.() -> R, crossinline fallback: K.() -> S) =
     if (this !is K && predicate(this)) block() else fallback(this as K)
 
-internal inline fun Boolean.onTrueValue(block: Work) =
+internal inline fun Boolean.onTrueValue(block: UnitFunction) =
     runWhen({ this }) { block(); true }
 
-internal inline fun Boolean.onFalseValue(block: Work) =
+internal inline fun Boolean.onFalseValue(block: UnitFunction) =
     runUnless({ this }) { block(); false }
 
-internal inline fun <T> T.onTrueValue(block: Work) =
+internal inline fun <T> T.onTrueValue(block: UnitFunction) =
     runWhen(Any?::isTrue) { block(); this }
 
-internal inline fun <T> T.onFalseValue(block: Work) =
+internal inline fun <T> T.onFalseValue(block: UnitFunction) =
     runUnless(Any?::isFalse) { block(); this }
 
 internal inline fun <T, R> T.whenTrueValue(block: T.() -> R) =
@@ -152,11 +152,11 @@ internal fun BooleanKFunction.isTrue() = call()
 
 internal fun BooleanKFunction.isFalse() = call().not()
 
-private fun isPositive(it: Int) = it > 0
-private fun isNegative(it: Int) = it < 0
+internal fun isPositive(it: Int) = it > 0
+internal fun isNegative(it: Int) = it < 0
 
-private fun isPositive(it: Long) = it > 0
-private fun isNegative(it: Long) = it < 0
+internal fun isPositive(it: Long) = it > 0
+internal fun isNegative(it: Long) = it < 0
 
 internal fun <T> isNull(it: T) = it isObject null
 internal fun <T> isNotNull(it: T) = it isNotObject null

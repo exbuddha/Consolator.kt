@@ -3,6 +3,7 @@
 
 package iso.consolator
 
+import androidx.lifecycle.*
 import kotlin.reflect.*
 import kotlin.annotation.AnnotationRetention.*
 import kotlin.annotation.AnnotationTarget.*
@@ -10,34 +11,40 @@ import kotlinx.coroutines.*
 import iso.consolator.annotation.Tag
 import iso.consolator.annotation.TagType
 
-// include lifecycle owner as context parameter
-
-// use current thread as implicit receiver
+context(_: LifecycleOwner)
 fun <I : Thread, T, R> I.from(lic: KCallable<T>, block: () -> R) = block()
 
+context(_: LifecycleOwner)
 fun <I : Thread, R> I.from(lic: Tag, block: () -> R) = block()
 
+context(_: LifecycleOwner)
 fun <I : Thread, R> I.from(lic: TagType, block: () -> R) = block()
 
-// add resolver scope to context parameters
+context(_: LifecycleOwner)
 fun <I : Thread, S : ProcessScope, T, R> I.from(lic: KCallable<T>, scope: S, thru: S.() -> R) = scope.thru()
 
+context(_: LifecycleOwner)
 fun <I : Thread, S : ProcessScope, R> I.from(lic: Tag, scope: S, thru: S.() -> R) = scope.thru()
 
+context(_: LifecycleOwner)
 fun <I : Thread, S : ProcessScope, R> I.from(lic: TagType, scope: S, thru: S.() -> R) = scope.thru()
 
-// set runnable as context parameter
+context(_: LifecycleOwner)
 fun <I : Runnable, T, R> I.from(lic: KCallable<T>, block: () -> R) = block()
 
+context(_: LifecycleOwner)
 fun <I : Runnable, R> I.from(lic: Tag, block: () -> R) = block()
 
+context(_: LifecycleOwner)
 fun <I : Runnable, R> I.from(lic: TagType, block: () -> R) = block()
 
-// add resolver scope to context parameters
+context(_: LifecycleOwner)
 fun <I : Runnable, S : ProcessScope, T, R> I.from(lic: KCallable<T>, scope: S, thru: S.() -> R) = scope.thru()
 
+context(_: LifecycleOwner)
 fun <I : Runnable, S : ProcessScope, R> I.from(lic: Tag, scope: S, thru: S.() -> R) = scope.thru()
 
+context(_: LifecycleOwner)
 fun <I : Runnable, S : ProcessScope, R> I.from(lic: TagType, scope: S, thru: S.() -> R) = scope.thru()
 
 // timeframe descriptors - contextual divergences in or out of items are described
@@ -346,137 +353,157 @@ inline infix fun <I, T : I, R, S> (suspend T.() -> R)?.then(crossinline next: su
     it()
     next() } }
 
+context(scope: I)
 inline infix fun <T : I, I, R, S> (suspend T.() -> R)?.thenSuspendedImplicitly(crossinline next: suspend (I) -> S): (suspend T.() -> S)? = letResult { {
     it()
-    next(TODO() /* implicit<I>() */) } }
+    next(scope) } }
 
 inline infix fun <I, T : I, R, S> (suspend T.() -> R)?.after(crossinline prev: suspend I.() -> S): (suspend T.() -> R)? = letResult { {
     prev()
     it() } }
 
+context(scope: I)
 inline infix fun <T : I, I, R, S> (suspend T.() -> R)?.afterSuspendedImplicitly(crossinline prev: suspend (I) -> S): (suspend T.() -> R)? = letResult { {
-    prev(TODO() /* implicit<I>() */)
+    prev(scope)
     it() } }
 
 inline infix fun <I, T : I, R, S> (suspend T.() -> R)?.thru(crossinline pass: suspend I.(R) -> S): (suspend T.() -> S)? = letResult { {
     pass(it()) } }
 
+context(scope: I)
 inline infix fun <T : I, I, R, S> (suspend T.() -> R)?.thruSuspendedImplicitly(crossinline pass: suspend (I, R) -> S): (suspend T.() -> S)? = letResult { {
-    pass(TODO() /* implicit<I>() */, it()) } }
+    pass(scope, it()) } }
 
 inline fun <I, T : I, R> (suspend T.() -> R)?.given(crossinline predicate: Predicate, crossinline fallback: suspend I.() -> R): (suspend T.() -> R)? = letResult { {
     if (predicate()) it() else fallback() } }
 
+context(scope: I)
 inline fun <T : I, I, R> (suspend T.() -> R)?.givenSuspendedImplicitly(crossinline predicate: Predicate, crossinline fallback: suspend (I) -> R): (suspend T.() -> R)? =
-    given(predicate) { fallback(TODO() /* implicit<I>() */) }
+    given(predicate) { fallback(scope) }
 
 inline fun <I, T : I, R> (suspend T.() -> R)?.unless(noinline predicate: Predicate, crossinline fallback: suspend I.() -> R): (suspend T.() -> R)? =
     given(predicate::isFalse, fallback)
 
+context(scope: I)
 inline fun <T : I, I, R> (suspend T.() -> R)?.unlessSuspendedImplicitly(noinline predicate: Predicate, crossinline fallback: suspend (I) -> R): (suspend T.() -> R)? =
-    unless(predicate) { fallback(TODO() /* implicit<I>() */) }
+    unless(predicate) { fallback(scope) }
 
 inline infix fun <I, T : I, U, R, S> (suspend T.(U) -> R)?.then(crossinline next: suspend I.(U) -> S): (suspend T.(U) -> S)? = letResult { {
     it(it)
     next(it) } }
 
+context(scope: I)
 inline infix fun <T : I, I, U, R, S> (suspend T.(U) -> R)?.thenSuspendedImplicitly(crossinline next: suspend (I, U) -> S): (suspend T.(U) -> S)? = letResult { {
     it(it)
-    next(TODO() /* implicit<I>() */, it) } }
+    next(scope, it) } }
 
 inline infix fun <I, T : I, U, R, S> (suspend T.(U) -> R)?.after(crossinline prev: suspend I.(U) -> S): (suspend T.(U) -> R)? = letResult { {
     prev(it)
     it(it) } }
 
+context(scope: I)
 inline infix fun <T : I, I, U, R, S> (suspend T.(U) -> R)?.afterSuspendedImplicitly(crossinline prev: suspend (I, U) -> S): (suspend T.(U) -> R)? = letResult { {
-    prev(TODO() /* implicit<I>() */, it)
+    prev(scope, it)
     it(it) } }
 
 inline infix fun <I, T : I, U, R, S> (suspend T.(U) -> R)?.thru(crossinline pass: suspend I.(R) -> S): (suspend T.(U) -> S)? = letResult { {
     pass(it(it)) } }
 
+context(scope: I)
 inline infix fun <T : I, I, U, R, S> (suspend T.(U) -> R)?.thruSuspendedImplicitly(crossinline pass: suspend (I, R) -> S): (suspend T.(U) -> S)? = letResult { {
-    pass(TODO() /* implicit<I>() */, it(it)) } }
+    pass(scope, it(it)) } }
 
 inline fun <I, T : I, U, R> (suspend T.(U) -> R)?.given(crossinline predicate: Predicate, crossinline fallback: suspend I.(U) -> R): (suspend T.(U) -> R)? = letResult { {
     if (predicate()) it(it) else fallback(it) } }
 
+context(scope: I)
 inline fun <T : I, I, U, R> (suspend T.(U) -> R)?.givenSuspendedImplicitly(crossinline predicate: Predicate, crossinline fallback: suspend (I, U) -> R): (suspend T.(U) -> R)? =
-    given(predicate) { fallback(TODO() /* implicit<I>() */, it) }
+    given(predicate) { fallback(scope, it) }
 
 inline fun <I, T : I, U, R> (suspend T.(U) -> R)?.unless(noinline predicate: Predicate, crossinline fallback: suspend I.(U) -> R): (suspend T.(U) -> R)? =
     given(predicate::isFalse, fallback)
 
+context(scope: I)
 inline fun <T : I, I, U, R> (suspend T.(U) -> R)?.unlessSuspendedImplicitly(noinline predicate: Predicate, crossinline fallback: suspend (I, U) -> R): (suspend T.(U) -> R)? =
-    unless(predicate) { fallback(TODO() /* implicit<I>() */, it) }
+    unless(predicate) { fallback(scope, it) }
 
 inline infix fun <I, T : I, U, V, R, S> (suspend T.(U, V) -> R)?.then(crossinline next: suspend I.(U, V) -> S): (suspend T.(U, V) -> S)? = letResult { { u, v ->
     it(u, v)
     next(u, v) } }
 
+context(scope: I)
 inline infix fun <T : I, I, U, V, R, S> (suspend T.(U, V) -> R)?.thenSuspendedImplicitly(crossinline next: suspend (I, U, V) -> S): (suspend T.(U, V) -> S)? = letResult { { u, v ->
     it(u, v)
-    next(TODO() /* implicit<I>() */, u, v) } }
+    next(scope, u, v) } }
 
 inline infix fun <I, T : I, U, V, R, S> (suspend T.(U, V) -> R)?.after(crossinline prev: suspend I.(U, V) -> S): (suspend T.(U, V) -> R)? = letResult { { u, v ->
     prev(u, v)
     it(u, v) } }
 
+context(scope: I)
 inline infix fun <T : I, I, U, V, R, S> (suspend T.(U, V) -> R)?.afterSuspendedImplicitly(crossinline prev: suspend (I, U, V) -> S): (suspend T.(U, V) -> R)? = letResult { { u, v ->
-    prev(TODO() /* implicit<I>() */, u, v)
+    prev(scope, u, v)
     it(u, v) } }
 
 inline infix fun <I, T : I, U, V, R, S> (suspend T.(U, V) -> R)?.thru(crossinline pass: suspend I.(R) -> S): (suspend T.(U, V) -> S)? = letResult { { u, v ->
     pass(it(u, v)) } }
 
+context(scope: I)
 inline infix fun <T : I, I, U, V, R, S> (suspend T.(U, V) -> R)?.thruSuspendedImplicitly(crossinline pass: suspend (I, R) -> S): (suspend T.(U, V) -> S)? = letResult { { u, v ->
-    pass(TODO() /* implicit<I>() */, it(u, v)) } }
+    pass(scope, it(u, v)) } }
 
 inline fun <I, T : I, U, V, R> (suspend T.(U, V) -> R)?.given(crossinline predicate: Predicate, crossinline fallback: suspend I.(U, V) -> R): (suspend T.(U, V) -> R)? = letResult { { u, v ->
     if (predicate()) it(u, v) else fallback(u, v) } }
 
+context(scope: I)
 inline fun <T : I, I, U, V, R> (suspend T.(U, V) -> R)?.givenSuspendedImplicitly(crossinline predicate: Predicate, crossinline fallback: suspend (I, U, V) -> R): (suspend T.(U, V) -> R)? =
-    given(predicate) { u, v -> fallback(TODO() /* implicit<I>() */, u, v) }
+    given(predicate) { u, v -> fallback(scope, u, v) }
 
 inline fun <I, T : I, U, V, R> (suspend T.(U, V) -> R)?.unless(noinline predicate: Predicate, crossinline fallback: suspend I.(U, V) -> R): (suspend T.(U, V) -> R)? =
     given(predicate::isFalse, fallback)
 
+context(scope: I)
 inline fun <T : I, I, U, V, R> (suspend T.(U, V) -> R)?.unlessSuspendedImplicitly(noinline predicate: Predicate, crossinline fallback: suspend (I, U, V) -> R): (suspend T.(U, V) -> R)? =
-    unless(predicate) { u, v -> fallback(TODO() /* implicit<I>() */, u, v) }
+    unless(predicate) { u, v -> fallback(scope, u, v) }
 
 inline infix fun <I, T : I, U, V, W, R, S> (suspend T.(U, V, W) -> R)?.then(crossinline next: suspend I.(U, V, W) -> S): (suspend T.(U, V, W) -> S)? = letResult { { u, v, w ->
     it(u, v, w)
     next(u, v, w) } }
 
+context(scope: I)
 inline infix fun <T : I, I, U, V, W, R, S> (suspend T.(U, V, W) -> R)?.thenSuspendedImplicitly(crossinline next: suspend (I, U, V, W) -> S): (suspend T.(U, V, W) -> S)? = letResult { { u, v, w ->
     it(u, v, w)
-    next(TODO() /* implicit<I>() */, u, v, w) } }
+    next(scope, u, v, w) } }
 
 inline infix fun <I, T : I, U, V, W, R, S> (suspend T.(U, V, W) -> R)?.after(crossinline prev: suspend I.(U, V, W) -> S): (suspend T.(U, V, W) -> R)? = letResult { { u, v, w ->
     prev(u, v, w)
     it(u, v, w) } }
 
+context(scope: I)
 inline infix fun <T : I, I, U, V, W, R, S> (suspend T.(U, V, W) -> R)?.afterSuspendedImplicitly(crossinline prev: suspend (I, U, V, W) -> S): (suspend T.(U, V, W) -> R)? = letResult { { u, v, w ->
-    prev(TODO() /* implicit<I>() */, u, v, w)
+    prev(scope, u, v, w)
     it(u, v, w) } }
 
 inline infix fun <I, T : I, U, V, W, R, S> (suspend T.(U, V, W) -> R)?.thru(crossinline pass: suspend I.(R) -> S): (suspend T.(U, V, W) -> S)? = letResult { { u, v, w ->
     pass(it(u, v, w)) } }
 
+context(scope: I)
 inline infix fun <T : I, I, U, V, W, R, S> (suspend T.(U, V, W) -> R)?.thruSuspendedImplicitly(crossinline pass: suspend (I, R) -> S): (suspend T.(U, V, W) -> S)? = letResult { { u, v, w ->
-    pass(TODO() /* implicit<I>() */, it(u, v, w)) } }
+    pass(scope, it(u, v, w)) } }
 
 inline fun <I, T : I, U, V, W, R> (suspend T.(U, V, W) ->R)?.given(crossinline predicate: Predicate, crossinline fallback: suspend I.(U, V, W) -> R): (suspend T.(U, V, W) -> R)? = letResult { { u, v, w ->
     if (predicate()) it(u, v, w) else fallback(u, v, w) } }
 
+context(scope: I)
 inline fun <T : I, I, U, V, W, R> (suspend T.(U, V, W) ->R)?.givenSuspendedImplicitly(crossinline predicate: Predicate, crossinline fallback: suspend (I, U, V, W) -> R): (suspend T.(U, V, W) -> R)? =
-    given(predicate) { u, v, w -> fallback(TODO() /* implicit<I>() */, u, v, w) }
+    given(predicate) { u, v, w -> fallback(scope, u, v, w) }
 
 inline fun <I, T : I, U, V, W, R> (suspend T.(U, V, W) ->R)?.unless(noinline predicate: Predicate, crossinline fallback: suspend I.(U, V, W) -> R): (suspend T.(U, V, W) -> R)? =
     given(predicate::isFalse, fallback)
 
+context(scope: I)
 inline fun <T : I, I, U, V, W, R> (suspend T.(U, V, W) ->R)?.unlessSuspendedImplicitly(noinline predicate: Predicate, crossinline fallback: suspend (I, U, V, W) -> R): (suspend T.(U, V, W) -> R)? =
-    unless(predicate) { u, v, w -> fallback(TODO() /* implicit<I>() */, u, v, w) }
+    unless(predicate) { u, v, w -> fallback(scope, u, v, w) }
 
 inline infix fun <R, S> (() -> R)?.then(crossinline next: () -> S): (() -> S)? = letResult { {
     it()

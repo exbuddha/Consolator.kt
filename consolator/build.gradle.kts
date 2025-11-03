@@ -5,6 +5,7 @@ plugins {
 
 android {
     namespace = "net.consolator"
+
     compileSdk {
         version = release(36)
     }
@@ -42,7 +43,8 @@ kotlin {
             progressiveMode = true
             freeCompilerArgs.addAll(
                 "-Xjvm-default=all",
-                "-Xcontext-parameters")
+                "-Xcontext-parameters",
+            )
         }
     }
 }

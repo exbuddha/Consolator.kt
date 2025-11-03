@@ -1,7 +1,6 @@
 package iso.consolator.component
 
 import android.app.Application
-import android.content.Context
 import android.content.SharedPreferences
 import ctx.consolator.UniqueContext
 import iso.consolator.asStringCounted
@@ -64,27 +63,36 @@ abstract class SchedulerApplication : Application(), ObjectProvider, UniqueConte
      */
     abstract fun getLastUncaughtExceptionWasMainThread(): Boolean?
 
-    /** @suppress */
     override fun onTrimMemory(level: Int) {
         super.onTrimMemory(level)
-        (this as Context)
-        .commit<MemoryManager>(
-            ::onTrimMemory, level) }
+        commit<MemoryManager>(level) }
 
     /** Commits step for execution to the scheduler. */
     fun commit(step: AnyCoroutineStep) = iso.consolator.commit(step = step)
 
-    // use iterator as optional context parameter in order to use its next property getter
-    protected tailrec fun <T, K : Any, V> SharedPreferences.Editor.putIteration(item: T, function: SharedPreferences.Editor.(String, V) -> Any? = { k, v -> putString(k, v.toString()) }, vararg map: Pair<K, (T) -> V>, next: (T) -> T?, index: Int = 0, depth: Int = 0) {
+    protected tailrec fun <T, K : Any, V> SharedPreferences.Editor.putIteration(item: T, function: SharedPreferences.Editor.(String, V) -> Any? = ::putKeyValuePairAsString, vararg map: Pair<K, (T) -> V>, next: (T) -> T?, index: Int = 0, depth: Int = 0) {
+        putItem(item, function, *map, index = index)
+        val item = next(item) ?: return
+        val depth = depth - 1
+        if (depth == 0) return
+        putIteration(item, function, *map, next = next, index = index + 1, depth = depth) }
+
+    context(iterator: Iterator<T>)
+    protected tailrec fun <T, K : Any, V> SharedPreferences.Editor.putIteration(function: SharedPreferences.Editor.(String, V) -> Any? = ::putKeyValuePairAsString, vararg map: Pair<K, (T) -> V>, index: Int = 0, depth: Int = 0) {
+        if (depth == 0) return
+        val item = with(iterator) { if (hasNext()) next() else return }
+        putItem(item, function, *map, index = index)
+        putIteration(function, *map, index = index + 1, depth = depth - 1) }
+
+    private fun <T, K : Any, V> SharedPreferences.Editor.putItem(item: T, function: SharedPreferences.Editor.(String, V) -> Any?, vararg map: Pair<K, (T) -> V>, index: Int) {
         fun put(str: K, value: V) =
             function(str.counted(index), value)
         map.forEach {
             val (key, value) = it
-            put(key, value(item)) }
-        val item = next(item) ?: return /* in iterator context, call hasNext() implicitly */
-        val depth = depth - 1
-        if (depth == 0) return
-        putIteration(item, function, *map, next = next, index = index + 1, depth = depth) }
+            put(key, value(item)) } }
+
+    private fun <V> putKeyValuePairAsString(editor: SharedPreferences.Editor, key: String, value: V) =
+        editor.putString(key, value.toString())
 
     protected fun SharedPreferences.getCountedStringOrNull(str: String, index: Int = 0) =
         getString(str.counted(index), null)
@@ -96,6 +104,9 @@ abstract class SchedulerApplication : Application(), ObjectProvider, UniqueConte
 
     override fun provide(type: AnyKClass) = when (type) {
         MemoryManager::class ->
-            object : MemoryManager {}
-        else -> rejectWithImplementationRestriction() }
+            object : MemoryManager {
+                override fun commit(vararg context: Any?) {}
+            }
+        else ->
+            rejectWithImplementationRestriction() }
 }

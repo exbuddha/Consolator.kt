@@ -19,36 +19,40 @@ internal open class PreciseNumber() : BaseNumber() {
     protected open fun clear() {
         order = Unit }
 
-    // with context parameters, this function becomes isolated to solution contexts
-    // for example, a precise number may become aware by context in order to adjust/lock its operation context
-    // a precise number can choose to expose any arbitrary number, such as its numeric base value, in unknown contexts
-    // while exposing its real value, for instance in a different base, given the context it is accessed from
-    override val getOrder: NumberPointer = ::translate
+    override val getOrder: NumberPointer = { translate() }
 
     override fun invokeOrder() = order as? Number ?: getOrder.invoke()
 
     protected var unifier: NumericUnifier = Companion
         private set
 
-    // with context parameters, set the context of operation or intercept result
+    // with context parameters, this function becomes isolated to solution contexts
+    // for example, a precise number may become aware by context in order to adjust/lock its operation context
+    // a precise number can choose to expose any arbitrary number, such as its numeric base value, in unknown contexts
+    // while exposing its real value, for instance in a different base, given the context it is accessed from
+    context(scope: Any?)
     private inline fun <reified N : Number> translate() =
-        with(order) { when (this) {
-            is String ->
-                run(unifier::unifyString)
-            is CharSequence ->
-                run(unifier::unifyCharSequence)
-            is AnyPair ->
-                run(unifier::unifyPair)
-            is AnyTriple ->
-                run(unifier::unifyTriple)
-            is AnyArray ->
-                run(unifier::unifyArray)
-            is AnyIterable ->
-                run(unifier::unifyIterable)
-            is Number -> /* move up if visibility changes to non-private */
-                run(unifier::unifyNumber)
-            else ->
-                run(unifier::unifyAny) } as N }
+        when (scope) {
+        this ->
+            with(order) { when (this) {
+                is String ->
+                    run(unifier::unifyString)
+                is CharSequence ->
+                    run(unifier::unifyCharSequence)
+                is AnyPair ->
+                    run(unifier::unifyPair)
+                is AnyTriple ->
+                    run(unifier::unifyTriple)
+                is AnyArray ->
+                    run(unifier::unifyArray)
+                is AnyIterable ->
+                    run(unifier::unifyIterable)
+                is Number -> /* move up if visibility changes to non-private */
+                    run(unifier::unifyNumber)
+                else ->
+                    run(unifier::unifyAny) } as N }
+        else ->
+            rejectWithImplementationRestriction() }
 
     private companion object : NumericUnifier
 }

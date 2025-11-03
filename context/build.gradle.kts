@@ -5,6 +5,7 @@ plugins {
 
 android {
     namespace = "ctx.consolator"
+
     compileSdk {
         version = release(36)
     }
@@ -35,12 +36,15 @@ kotlin {
             progressiveMode = true
             freeCompilerArgs.addAll(
                 "-Xjvm-default=all",
-                "-Xcontext-parameters")
+                "-Xcontext-parameters",
+            )
         }
     }
 }
 
 dependencies {
+    implementation(project(":abstract"))
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
