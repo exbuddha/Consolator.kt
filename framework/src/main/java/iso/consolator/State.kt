@@ -320,7 +320,7 @@ sealed interface State {
                         Resolved::class -> { /* assign new transit map to the type of change out of resolved state for the view state */ }
                         else -> {} } }
             })
-            return this.block(object : BaseViewState() {}) /* or assigned init state */ }
+            return block(object : BaseViewState() {}) /* or assigned init state */ }
 
         // accepts internal states and generated states from registered views
         @JvmStatic inline fun <S : State, reified R : S> initial(state: S) =
