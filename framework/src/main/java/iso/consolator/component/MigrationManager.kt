@@ -5,8 +5,10 @@ import iso.consolator.Resolver
 import iso.consolator.Routine
 import iso.consolator.State
 import iso.consolator.applicationMigrationManager
+import iso.consolator.asObjectProvider
 import iso.consolator.foregroundFragment
 import iso.consolator.fulfill
+import iso.consolator.second
 import iso.consolator.withSchedulerScope
 import iso.consolator.EMPTY_COROUTINE
 import iso.consolator.annotation.Referred
@@ -27,9 +29,17 @@ abstract class MigrationManager : Resolver {
     override fun commit(vararg context: Any?) =
         when (context.firstOrNull()) {
             TransitionManager::class ->
-                foregroundFragment.asTransitionManager()
+                when (context.size) {
+                    2 ->
+                        foregroundFragment.asTransitionManager()
+                    3 ->
+                        context.second().asObjectProvider()
+                        ?.provide(TransitionManager::class).asTransitionManager()
+                    else ->
+                        null }
                 ?.commit(context[1])
-            else -> null }
+            else ->
+                null }
 
     var progress: Byte = 0
         get() = field.toPercentage()
