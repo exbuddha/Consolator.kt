@@ -951,6 +951,7 @@ sealed class CallableSchedulerScope : CallableResolverScope {
     override fun commit(step: AnyKCallable) =
         step.call(step.tag /* optional */)
 
+    // requires passing scope as args[0] for network calls
     override fun AnyKCallable.commitStep(scope: CoroutineScope, vararg args: Any?) =
         commitSuspend(scope, *args)
 
@@ -988,18 +989,6 @@ inline fun <R> withCallableScope(crossinline block: CallableSchedulerScope.Compa
 
 @Coordinate
 internal object Scheduler : SchedulerScope, LiveStepReceiver.Synchronizer<LiveStepIdentityType>() {
-    @Key(1)
-    @JvmField var activityConfigurationChangeManager: ConfigurationChangeManager? = null
-
-    @Key(2)
-    @JvmField var activityNightModeChangeManager: NightModeChangeManager? = null
-
-    @Key(3)
-    @JvmField var activityLocalesChangeManager: LocalesChangeManager? = null
-
-    @Key(4)
-    @JvmField var applicationMigrationManager: ApplicationMigrationManager? = null
-
     @JvmStatic fun observe() {
         run(::observeForever) }
 
@@ -1017,27 +1006,6 @@ internal object Scheduler : SchedulerScope, LiveStepReceiver.Synchronizer<LiveSt
     override fun onInactive() {
         // check lifecycle owner state
         SchedulerScope.isSchedulerObserved = false }
-
-    @JvmStatic fun <T : Resolver> commit(resolver: KClass<out T>, provider: Any, vararg context: Any?) =
-        when (resolver) {
-            ApplicationMigrationManager::class ->
-                ::applicationMigrationManager.require(provider)
-            ConfigurationChangeManager::class ->
-                ::activityConfigurationChangeManager.require(provider)
-            NightModeChangeManager::class ->
-                ::activityNightModeChangeManager.require(provider)
-            LocalesChangeManager::class ->
-                ::activityLocalesChangeManager.require(provider)
-            MemoryManager::class ->
-                object : MemoryManager {}
-            else -> null
-        }?.commit(*context)
-
-    @JvmStatic fun clearResolverObjects() {
-        activityConfigurationChangeManager = null
-        activityNightModeChangeManager = null
-        activityLocalesChangeManager = null
-        applicationMigrationManager = null }
 
     override val coroutineContext
         get() = Default
@@ -1103,18 +1071,6 @@ internal fun commit(scope: CoroutineScope? = SchedulerScope(), step: AnyCoroutin
             (it.parameters.second().name `is` "step") }
         ?: return commit(step)
         ).call(this, step) }
-
-internal inline fun <reified T : Resolver, reified I> commit(vararg context: Any?) =
-    commit(T::class, I::class, *context)
-
-internal inline fun <reified T : Resolver> LifecycleOwner.commit(member: UnitKFunction, vararg context: Any?) =
-    commit(T::class, this, member, *context)
-
-internal inline fun <reified T : Resolver> Activity.commit(member: UnitKFunction, vararg context: Any?) =
-    commit(T::class, this, member, *context)
-
-internal inline fun <reified T : Resolver> Context.commit(member: UnitKFunction, vararg context: Any?) =
-    commit(T::class, this, member, *context)
 
 fun <R> schedule(step: KCallable<R>) =
     SchedulerScope.repostByPreference(step, AnyStep::post, ::handle)

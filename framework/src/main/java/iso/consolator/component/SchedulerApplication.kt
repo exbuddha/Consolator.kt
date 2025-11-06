@@ -65,7 +65,8 @@ abstract class SchedulerApplication : Application(), ObjectProvider, UniqueConte
 
     override fun onTrimMemory(level: Int) {
         super.onTrimMemory(level)
-        commit<MemoryManager>(level) }
+        commit<MemoryManager>(level)
+    }
 
     /** Commits step for execution to the scheduler. */
     fun commit(step: AnyCoroutineStep) = iso.consolator.commit(step = step)

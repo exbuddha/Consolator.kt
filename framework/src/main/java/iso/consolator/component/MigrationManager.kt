@@ -3,8 +3,8 @@ package iso.consolator.component
 import iso.consolator.AnyCoroutineStep
 import iso.consolator.Resolver
 import iso.consolator.Routine
-import iso.consolator.Scheduler
 import iso.consolator.State
+import iso.consolator.applicationMigrationManager
 import iso.consolator.foregroundFragment
 import iso.consolator.fulfill
 import iso.consolator.withSchedulerScope
@@ -38,7 +38,7 @@ abstract class MigrationManager : Resolver {
     private fun Byte.toPercentage() =
         times(100).div(Byte.MAX_VALUE).toByte()
 
-    internal fun expire() = Scheduler::applicationMigrationManager.expire()
+    internal fun expire() = ::applicationMigrationManager.expire()
 }
 
 typealias ApplicationMigrationManager = MigrationManager

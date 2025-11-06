@@ -57,7 +57,8 @@ private var networkCallback: NetworkCallback? = null
         .also { field = it }
 
 internal var reactToNetworkCapabilitiesChanged: (Network, NetworkCapabilities) -> Unit = { network, networkCapabilities ->
-    commit<NetworkResolver, NetworkContext>(::saveNetworkCapabilities, SchedulerScope(), network, networkCapabilities) }
+    withCallableScope {
+    ::saveNetworkCapabilities.commitStep(SchedulerScope(), network, networkCapabilities) } }
 
 @Tag(NET_CAP_UPDATE)
 private suspend fun saveNetworkCapabilities(scope: CoroutineScope, network: Network, networkCapabilities: NetworkCapabilities) =

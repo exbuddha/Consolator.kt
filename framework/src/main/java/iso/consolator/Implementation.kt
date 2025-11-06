@@ -15,8 +15,8 @@ import ctx.consolator.*
 import data.consolator.*
 import data.consolator.dao.*
 import iso.consolator.annotation.*
-import iso.consolator.component.MemoryManager
-import iso.consolator.component.SchedulerApplication
+import iso.consolator.component.*
+import iso.consolator.component.SchedulerActivity.*
 import iso.consolator.exception.SchedulerIntent
 import iso.consolator.reflect.*
 import java.lang.*
@@ -51,6 +51,39 @@ internal val processLifecycleScope
 
 private val processLifecycleOwner
     get() = ProcessLifecycleOwner.get()
+
+@Key(1)
+var applicationMigrationManager: ApplicationMigrationManager? = null
+
+@Key(2)
+var activityConfigurationChangeManager: ConfigurationChangeManager? = null
+
+@Key(3)
+var activityNightModeChangeManager: NightModeChangeManager? = null
+
+@Key(4)
+var activityLocalesChangeManager: LocalesChangeManager? = null
+
+fun commitToMigrationManager(provider: Any, vararg context: Any?) =
+    requireThenCommit(::applicationMigrationManager, provider, *context)
+
+fun commitToConfigurationChangeManager(provider: Any, vararg context: Any?) =
+    requireThenCommit(::activityConfigurationChangeManager, provider, *context)
+
+fun commitToNightModeChangeManager(provider: Any, vararg context: Any?) =
+    requireThenCommit(::activityNightModeChangeManager, provider, *context)
+
+fun commitToLocalesChangeManager(provider: Any, vararg context: Any?) =
+    requireThenCommit(::activityLocalesChangeManager, provider, *context)
+
+private inline fun <reified T : Resolver> requireThenCommit(resolver: KMutableProperty<T?>, provider: Any, vararg context: Any?) =
+    resolver.require(provider)?.commit(*context)
+
+fun clearResolverObjects() {
+    activityConfigurationChangeManager = null
+    activityNightModeChangeManager = null
+    activityLocalesChangeManager = null
+    applicationMigrationManager = null }
 
 @Throws
 context(instance: Application)

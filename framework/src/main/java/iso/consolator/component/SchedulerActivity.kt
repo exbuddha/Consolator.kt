@@ -12,9 +12,10 @@ import androidx.fragment.app.Fragment
 import ctx.consolator.ReferredContext
 import ctx.consolator.WeakContext
 import iso.consolator.Resolver
-import iso.consolator.UnitKFunction
 import iso.consolator.asType
-import iso.consolator.commit
+import iso.consolator.commitToConfigurationChangeManager
+import iso.consolator.commitToLocalesChangeManager
+import iso.consolator.commitToNightModeChangeManager
 import iso.consolator.foregroundLifecycleOwner
 import iso.consolator.isPermissionGranted
 import iso.consolator.withSchedulerScope
@@ -148,29 +149,23 @@ abstract class SchedulerActivity : AppCompatActivity(), ReferredContext {
         super.onSaveInstanceState(outState)
     }
 
-    /** @suppress */
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
-        asActivityCommit<ConfigurationChangeManager>(
-            ::onConfigurationChanged, newConfig) }
+        commitToConfigurationChangeManager(newConfig)
+    }
 
-    /** @suppress */
     override fun onNightModeChanged(mode: Int) {
         super.onNightModeChanged(mode)
-        asActivityCommit<NightModeChangeManager>(
-            ::onNightModeChanged, mode) }
+        commitToNightModeChangeManager(mode)
+    }
 
-    /** @suppress */
     override fun onLocalesChanged(locales: LocaleListCompat) {
         super.onLocalesChanged(locales)
-        asActivityCommit<LocalesChangeManager>(
-            ::onLocalesChanged, locales) }
+        commitToLocalesChangeManager(locales)
+    }
 
-    /** @suppress */
     abstract inner class ConfigurationChangeManager : ActivityChangeResolver()
-    /** @suppress */
     abstract inner class NightModeChangeManager : ActivityChangeResolver()
-    /** @suppress */
     abstract inner class LocalesChangeManager : ActivityChangeResolver()
 
     abstract inner class ActivityChangeResolver : Resolver {
@@ -187,14 +182,8 @@ abstract class SchedulerActivity : AppCompatActivity(), ReferredContext {
             get() = isPermissionGranted(INTERNET)
     }
 
-    /** @suppress */
-    private inline fun <reified R : Resolver> asActivityCommit(member: UnitKFunction, vararg context: Any?) =
-        asActivity().commit<R>(member, *context)
-
-    /** @suppress */
     private fun asActivity() = this as Activity
 
-    /** @suppress */
     final override var ref: WeakContext? = null
         get() = field.receive(this).also { field = it }
 }
