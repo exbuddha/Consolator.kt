@@ -285,6 +285,9 @@ sealed interface State {
     companion object : ActiveContextSynchronizer, DirectStateDescriptor, OpenState(), StateDependence.Inside<State>, NumericUnifier {
         @JvmStatic lateinit var VM: ViewModel
 
+        context(self: Any)
+        @JvmStatic fun ofSelf(): State = Ambiguous
+
         @JvmStatic fun of(vararg args: Any?): State = Ambiguous
 
         @JvmStatic infix fun <V : View> of(view: V): State? = null

@@ -18,7 +18,7 @@ interface MemoryManager : Resolver {
     fun expire(property: AnyKMutableProperty) {
         // must be strengthened by connecting to other expiry sets
         forEach { alive ->
-        if ((alive(property).isFalse()) and
+        if (alive(property).isFalse() and
             (State of property isNot Lock.Closed))
             property.expire() } }
 
