@@ -286,7 +286,7 @@ sealed interface State {
         @JvmStatic lateinit var VM: ViewModel
 
         context(self: Any)
-        @JvmStatic fun ofSelf(): State = Ambiguous
+        @JvmStatic val ofSelf: State get() = Ambiguous
 
         @JvmStatic fun of(vararg args: Any?): State = Ambiguous
 

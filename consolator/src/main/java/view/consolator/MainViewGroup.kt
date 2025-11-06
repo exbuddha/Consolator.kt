@@ -10,7 +10,7 @@ internal abstract class MainViewGroup(context: Context) : BaseViewGroup(context)
     constructor(inflater: LayoutInflater, layout: ViewGroup, savedInstanceState: Bundle?) : this(layout.context)
 
     override fun onDetachedFromWindow() {
-        State.ofSelf()[-2] = State.Ambiguous
+        State.ofSelf[-2] = State.Ambiguous
         super.onDetachedFromWindow()
     }
 
