@@ -66,26 +66,24 @@ var activityNightModeChangeManager: NightModeChangeManager? = null
 @Key(4)
 var activityLocalesChangeManager: LocalesChangeManager? = null
 
-fun <I : Resolver> commit(vararg context: Any?) {}
-
 context(provider: Context)
-fun commitToMigrationManager(vararg context: Any?) =
+internal fun commitToMigrationManager(vararg context: Any?) =
     requireThenCommit(::applicationMigrationManager, provider, *context)
 
 context(provider: Context)
-fun commitToMemoryManager(level: Int) =
+internal fun commitToMemoryManager(level: Int) =
     provider.asObjectProvider()?.provide(MemoryManager::class).asMemoryManager()?.commit(level)
 
 context(provider: Context)
-fun commitToConfigurationChangeManager(newConfig: Configuration) =
+internal fun commitToConfigurationChangeManager(newConfig: Configuration) =
     requireThenCommit(::activityConfigurationChangeManager, provider, newConfig)
 
 context(provider: Context)
-fun commitToNightModeChangeManager(mode: Int) =
+internal fun commitToNightModeChangeManager(mode: Int) =
     requireThenCommit(::activityNightModeChangeManager, provider, mode)
 
 context(provider: Context)
-fun commitToLocalesChangeManager(locales: LocaleListCompat) =
+internal fun commitToLocalesChangeManager(locales: LocaleListCompat) =
     requireThenCommit(::activityLocalesChangeManager, provider, locales)
 
 private inline fun <reified T : Resolver> requireThenCommit(resolver: KMutableProperty<T?>, provider: Any, vararg context: Any?) =
