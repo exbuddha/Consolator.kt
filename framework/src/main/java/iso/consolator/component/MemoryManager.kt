@@ -5,7 +5,7 @@ import iso.consolator.Lock
 import iso.consolator.Resolver
 import iso.consolator.State
 import iso.consolator.asAnyFunction
-import iso.consolator.asType
+import iso.consolator.asTypeUnsafe
 import iso.consolator.invokeWhenNotIgnored
 import iso.consolator.isFalse
 import iso.consolator.isNot
@@ -51,7 +51,7 @@ interface MemoryManager : Resolver {
         context.lastOrNull().asAnyFunction()?.invokeWhenNotIgnored()
 }
 
-internal fun Any?.asMemoryManager() = asType<MemoryManager>()
+internal fun Any.asMemoryManager() = asTypeUnsafe<MemoryManager>()
 
 internal fun AnyKMutableProperty.expire() = setInstance(null)
 

@@ -72,7 +72,7 @@ internal fun commitToMigrationManager(vararg context: Any?) =
 
 context(provider: Context)
 internal fun commitToMemoryManager(level: Int) =
-    provider.asObjectProvider()?.provide(MemoryManager::class).asMemoryManager()?.commit(level)
+    provider.asObjectProvider()?.provide(MemoryManager::class)?.asMemoryManager()?.commit(level)
 
 context(provider: Context)
 internal fun commitToConfigurationChangeManager(newConfig: Configuration) =
