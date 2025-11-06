@@ -6,8 +6,10 @@ package iso.consolator
 import android.app.*
 import android.content.*
 import android.content.pm.*
+import android.content.res.Configuration
 import android.net.*
 import androidx.core.content.*
+import androidx.core.os.LocaleListCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.*
 import androidx.room.*
@@ -64,17 +66,27 @@ var activityNightModeChangeManager: NightModeChangeManager? = null
 @Key(4)
 var activityLocalesChangeManager: LocalesChangeManager? = null
 
-fun commitToMigrationManager(provider: Any, vararg context: Any?) =
+fun <I : Resolver> commit(vararg context: Any?) {}
+
+context(provider: Context)
+fun commitToMigrationManager(vararg context: Any?) =
     requireThenCommit(::applicationMigrationManager, provider, *context)
 
-fun commitToConfigurationChangeManager(provider: Any, vararg context: Any?) =
-    requireThenCommit(::activityConfigurationChangeManager, provider, *context)
+context(provider: Context)
+fun commitToMemoryManager(level: Int) =
+    provider.asObjectProvider()?.provide(MemoryManager::class).asMemoryManager()?.commit(level)
 
-fun commitToNightModeChangeManager(provider: Any, vararg context: Any?) =
-    requireThenCommit(::activityNightModeChangeManager, provider, *context)
+context(provider: Context)
+fun commitToConfigurationChangeManager(newConfig: Configuration) =
+    requireThenCommit(::activityConfigurationChangeManager, provider, newConfig)
 
-fun commitToLocalesChangeManager(provider: Any, vararg context: Any?) =
-    requireThenCommit(::activityLocalesChangeManager, provider, *context)
+context(provider: Context)
+fun commitToNightModeChangeManager(mode: Int) =
+    requireThenCommit(::activityNightModeChangeManager, provider, mode)
+
+context(provider: Context)
+fun commitToLocalesChangeManager(locales: LocaleListCompat) =
+    requireThenCommit(::activityLocalesChangeManager, provider, locales)
 
 private inline fun <reified T : Resolver> requireThenCommit(resolver: KMutableProperty<T?>, provider: Any, vararg context: Any?) =
     resolver.require(provider)?.commit(*context)
@@ -148,11 +160,6 @@ internal fun Context.changeBroadly(ref: WeakContext = asWeakReference(), stage: 
 
 internal fun Context.changeGlobally(owner: LifecycleOwner, ref: WeakContext = asWeakReference(), stage: ContextStep) =
     commit { stage(this) }
-
-context(_: Context)
-fun <I : MemoryManager> commit(level: Int) {}
-
-fun <I : Resolver> commit(vararg context: Any?) {}
 
 internal suspend fun updateNetworkState() {
     NetworkDao {

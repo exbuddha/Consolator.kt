@@ -4,7 +4,7 @@ import android.app.Application
 import android.content.SharedPreferences
 import ctx.consolator.UniqueContext
 import iso.consolator.asStringCounted
-import iso.consolator.commit
+import iso.consolator.commitToMemoryManager
 import iso.consolator.rejectWithImplementationRestriction
 import iso.consolator.resultWhen
 import ctx.consolator.now
@@ -65,7 +65,7 @@ abstract class SchedulerApplication : Application(), ObjectProvider, UniqueConte
 
     override fun onTrimMemory(level: Int) {
         super.onTrimMemory(level)
-        commit<MemoryManager>(level)
+        commitToMemoryManager(level)
     }
 
     /** Commits step for execution to the scheduler. */
