@@ -12,6 +12,9 @@ import iso.consolator.isNot
 import iso.consolator.setInstance
 
 interface MemoryManager : Resolver {
+    context(_: Any)
+    fun commit(level: Int) = Unit
+
     fun expire(property: AnyKMutableProperty) {
         // must be strengthened by connecting to other expiry sets
         forEach { alive ->
