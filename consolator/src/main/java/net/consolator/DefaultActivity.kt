@@ -143,11 +143,8 @@ open class DefaultActivity : BaseActivity(), ContentLayoutReceiver, LifecyclePro
 
     override lateinit var model: ViewModel
 
-    /** @suppress */
     internal abstract inner class ConfigurationChangeManager : SchedulerActivity.ConfigurationChangeManager()
-    /** @suppress */
     internal abstract inner class NightModeChangeManager : SchedulerActivity.NightModeChangeManager()
-    /** @suppress */
     internal abstract inner class LocalesChangeManager : SchedulerActivity.LocalesChangeManager()
 
     override var isCrossObjectProviderEnabled = true

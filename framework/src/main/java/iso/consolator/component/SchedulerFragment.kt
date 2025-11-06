@@ -31,42 +31,36 @@ abstract class SchedulerFragment(@LayoutRes contentLayoutId: Int) : Fragment(con
     protected fun setTag(tag: Tag?) {
         /* register in source */ }
 
-    /** @suppress */
     override fun onAttach(context: Context) {
         super.onAttach(context)
         withSchedulerScope {
         commitAttach(context) }
     }
 
-    /** @suppress */
     override fun onStart() {
         super.onStart()
         withSchedulerScope {
         commitStart() }
     }
 
-    /** @suppress */
     override fun onResume() {
         super.onResume()
         withSchedulerScope {
         commitResume() }
     }
 
-    /** @suppress */
     override fun onPause() {
         super.onPause()
         withSchedulerScope {
         commitPause() }
     }
 
-    /** @suppress */
     override fun onStop() {
         withSchedulerScope {
         commitStop() }
         super.onStop()
     }
 
-    /** @suppress */
     override fun onSaveInstanceState(outState: Bundle) {
         // write view-coordinator state to bundle
         withSchedulerScope {
@@ -74,21 +68,18 @@ abstract class SchedulerFragment(@LayoutRes contentLayoutId: Int) : Fragment(con
         super.onSaveInstanceState(outState)
     }
 
-    /** @suppress */
     override fun onDestroyView() {
         withSchedulerScope {
         commitDestroyView() }
         super.onDestroyView()
     }
 
-    /** @suppress */
     override fun onDestroy() {
         withSchedulerScope {
         commitDestroy() }
         super.onDestroy()
     }
 
-    /** @suppress */
     override fun onDetach() {
         withSchedulerScope {
         commitDetach() }
@@ -105,6 +96,5 @@ abstract class SchedulerFragment(@LayoutRes contentLayoutId: Int) : Fragment(con
     @Target(FUNCTION, PROPERTY)
     protected annotation class MainViewGroup
 
-    /** @suppress */
     protected abstract inner class MigrationManager : iso.consolator.component.MigrationManager()
 }
