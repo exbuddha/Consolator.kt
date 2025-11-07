@@ -9,7 +9,7 @@ import androidx.lifecycle.*
 // universally known truth for an intent, outcome, or cause for actions
 internal interface Truth {
     context(_: Resolver)
-    fun solve(): Routine
+    fun intend(): ActionIntent
 }
 
 // internally understood cause for an action
