@@ -97,7 +97,7 @@ fun clearResolverObjects() {
 
 @Throws
 context(instance: Application)
-fun touchContext(context: Context = instance) {
+internal fun touchContext(context: Context = instance) {
     if (context is MainUncaughtExceptionHandler) {
         mainUncaughtExceptionHandler = context
             .apply(Thread::setDefaultUncaughtExceptionHandler)

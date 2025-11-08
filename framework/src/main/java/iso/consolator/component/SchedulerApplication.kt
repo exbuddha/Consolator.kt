@@ -3,19 +3,22 @@ package iso.consolator.component
 import android.app.Application
 import android.content.SharedPreferences
 import ctx.consolator.UniqueContext
-import iso.consolator.asStringCounted
-import iso.consolator.commitToMemoryManager
-import iso.consolator.rejectWithImplementationRestriction
-import iso.consolator.resultWhen
-import ctx.consolator.now
 import iso.consolator.AnyCoroutineStep
 import iso.consolator.AnyKClass
 import iso.consolator.ObjectProvider
 import iso.consolator.Time
+import iso.consolator.asStringCounted
+import iso.consolator.commitToMemoryManager
+import iso.consolator.rejectWithImplementationRestriction
+import iso.consolator.resultWhen
+import iso.consolator.touchContext
+import ctx.consolator.now
 import iso.consolator.annotation.Key
 import kotlin.reflect.KFunction
 
 abstract class SchedulerApplication : Application(), ObjectProvider, UniqueContext.Instance {
+    init { touchContext() }
+
     /** Unique context start time. */
     @Key(0)
     override var uid = now()

@@ -30,14 +30,13 @@ abstract class MigrationManager : Resolver {
         when (context.firstOrNull()) {
             TransitionManager::class ->
                 when (context.size) {
-                    2 ->
-                        foregroundFragment.asTransitionManager()
+                    2 -> foregroundFragment
                     3 ->
                         context.second().asObjectProvider()
-                        ?.provide(TransitionManager::class).asTransitionManager()
+                        ?.provide(TransitionManager::class)
                     else ->
-                        null }
-                ?.commit(context[1])
+                        null
+                }.asTransitionManager()?.commit(context[1])
             else ->
                 null }
 
