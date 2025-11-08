@@ -9,6 +9,7 @@ import iso.consolator.ObjectProvider
 import iso.consolator.Time
 import iso.consolator.asStringCounted
 import iso.consolator.commitToMemoryManager
+import iso.consolator.disableLogger
 import iso.consolator.rejectWithImplementationRestriction
 import iso.consolator.resultWhen
 import iso.consolator.touchContext
@@ -17,7 +18,9 @@ import iso.consolator.annotation.Key
 import kotlin.reflect.KFunction
 
 abstract class SchedulerApplication : Application(), ObjectProvider, UniqueContext.Instance {
-    init { touchContext() }
+    init {
+        disableLogger()
+        touchContext() }
 
     /** Unique context start time. */
     @Key(0)

@@ -11,8 +11,6 @@ import iso.consolator.component.SchedulerApplication
  * Adds support to scheduler application for starting the service and editing the shared preferences.
  */
 sealed class BaseApplication : SchedulerApplication(), MainUncaughtExceptionHandler {
-    init { disableLogger() }
-
     /**
      * Starts the base service.
      *
