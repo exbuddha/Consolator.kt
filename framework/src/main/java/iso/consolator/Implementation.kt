@@ -68,7 +68,7 @@ var activityLocalesChangeManager: LocalesChangeManager? = null
 
 context(provider: Context)
 internal fun commitToMigrationManager(vararg context: Any?) =
-    requireThenCommit(::applicationMigrationManager, provider, *context)
+    ::applicationMigrationManager.requireThenCommit(provider, *context)
 
 context(provider: Context)
 internal fun commitToMemoryManager(level: Int) =
@@ -76,18 +76,18 @@ internal fun commitToMemoryManager(level: Int) =
 
 context(provider: Context)
 internal fun commitToConfigurationChangeManager(newConfig: Configuration) =
-    requireThenCommit(::activityConfigurationChangeManager, provider, newConfig)
+    ::activityConfigurationChangeManager.requireThenCommit(provider, newConfig)
 
 context(provider: Context)
 internal fun commitToNightModeChangeManager(mode: Int) =
-    requireThenCommit(::activityNightModeChangeManager, provider, mode)
+    ::activityNightModeChangeManager.requireThenCommit(provider, mode)
 
 context(provider: Context)
 internal fun commitToLocalesChangeManager(locales: LocaleListCompat) =
-    requireThenCommit(::activityLocalesChangeManager, provider, locales)
+    ::activityLocalesChangeManager.requireThenCommit(provider, locales)
 
-private inline fun <reified T : Resolver> requireThenCommit(resolver: KMutableProperty<T?>, provider: Any, vararg context: Any?) =
-    resolver.require(provider)?.commit(*context)
+private inline fun <reified T : Resolver> KMutableProperty<T?>.requireThenCommit(provider: Any, vararg context: Any?) =
+    require(provider)?.commit(*context)
 
 fun clearResolverObjects() {
     activityConfigurationChangeManager = null
