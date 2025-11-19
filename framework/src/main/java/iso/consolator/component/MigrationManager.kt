@@ -9,6 +9,7 @@ import iso.consolator.asObjectProvider
 import iso.consolator.foregroundFragment
 import iso.consolator.fulfill
 import iso.consolator.second
+import iso.consolator.sliceArray
 import iso.consolator.withSchedulerScope
 import iso.consolator.EMPTY_COROUTINE
 import iso.consolator.annotation.Referred
@@ -28,15 +29,16 @@ abstract class MigrationManager : Resolver {
 
     override fun commit(vararg context: Any?) =
         when (context.firstOrNull()) {
-            TransitionManager::class ->
-                when (context.size) {
-                    2 -> foregroundFragment
-                    3 ->
-                        context.second().asObjectProvider()
-                        ?.provide(TransitionManager::class)
-                    else ->
-                        null
-                }.asTransitionManager()?.commit(context[1])
+            TransitionManager::class -> {
+                var startIndex: Int
+                if (context.size == 2) {
+                    startIndex = 1
+                    foregroundFragment }
+                else {
+                    startIndex = 2
+                    context.second().asObjectProvider()
+                    ?.provide(TransitionManager::class)
+                }?.asTransitionManager()?.commit(context.sliceArray(startIndex)) }
             else ->
                 null }
 

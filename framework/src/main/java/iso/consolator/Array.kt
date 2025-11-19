@@ -3,6 +3,12 @@
 
 package iso.consolator
 
+internal fun <T> Array<T>.sliceArray(startIndex: Int) =
+    sliceArray(startIndex until size)
+
+internal fun <T> Array<T>.sliceArrayTo(endIndex: Int) =
+    sliceArray(0..endIndex)
+
 internal fun <T> List<T>.second() = get(1)
 
 internal inline fun <T, reified R> Array<out T>.mapToTypedArray(transform: (T) -> R) =
