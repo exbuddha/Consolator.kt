@@ -102,7 +102,7 @@ internal fun touchContext(context: Context = instance) {
         mainUncaughtExceptionHandler = context
             .apply(Thread::setDefaultUncaughtExceptionHandler)
         State[-1] = State.Resolved }
-    if (instance is SchedulerApplication)
+    if (instance.typeIs<SchedulerApplication, _>())
         with(processLifecycleOwner) {
         currentThread.from(
             APP_INIT,
