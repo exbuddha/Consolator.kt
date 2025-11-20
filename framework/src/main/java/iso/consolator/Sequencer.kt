@@ -148,7 +148,7 @@ internal class Sequencer : Synchronizer<AnyTriple>, Transactor<SequencerIndex, B
                 { isLiveWork = false }) }
         tryPropagating({
             // process tags to reuse live step
-            val liveStep = liveStep.determineByType({ invoke() }, { call() })?.asLiveStep()
+            val liveStep = liveStep.determineByType(LiveStepPointer::invoke, LiveStepKCallable::call)?.asLiveStep()
             yield()
             latestStep = liveStep // live step <-> work
             if (liveStep !== null)
