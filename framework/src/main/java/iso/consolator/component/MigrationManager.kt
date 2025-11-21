@@ -1,6 +1,7 @@
 package iso.consolator.component
 
 import iso.consolator.AnyCoroutineStep
+import iso.consolator.ObjectProvider
 import iso.consolator.Resolver
 import iso.consolator.Routine
 import iso.consolator.State
@@ -8,8 +9,9 @@ import iso.consolator.applicationMigrationManager
 import iso.consolator.asObjectProvider
 import iso.consolator.foregroundFragment
 import iso.consolator.fulfill
-import iso.consolator.second
-import iso.consolator.sliceArray
+import iso.consolator.secondOrNull
+import iso.consolator.sliceArrayUntil
+import iso.consolator.typeIs
 import iso.consolator.withSchedulerScope
 import iso.consolator.EMPTY_COROUTINE
 import iso.consolator.annotation.Referred
@@ -30,15 +32,17 @@ abstract class MigrationManager : Resolver {
     override fun commit(vararg context: Any?) =
         when (context.firstOrNull()) {
             TransitionManager::class -> {
-                var startIndex: Int
-                if (context.size == 2) {
-                    startIndex = 1
-                    foregroundFragment }
-                else {
-                    startIndex = 2
-                    context.second().asObjectProvider()
-                    ?.provide(TransitionManager::class)
-                }?.asTransitionManager()?.commit(*context.sliceArray(startIndex)) }
+                val startIndex: Int
+                val manager: TransitionManager?
+                with(context.secondOrNull()) {
+                    if (typeIs<ObjectProvider, _>()) {
+                        startIndex = 2
+                        manager = asObjectProvider()?.provide(TransitionManager::class)?.asTransitionManager() }
+                    else {
+                        startIndex = 1
+                        manager = foregroundFragment?.asTransitionManager()
+                    } }
+                manager?.commit(*context.sliceArrayUntil(startIndex, context.size)) }
             else ->
                 null }
 

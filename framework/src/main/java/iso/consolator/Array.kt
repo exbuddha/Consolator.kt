@@ -4,10 +4,19 @@
 package iso.consolator
 
 internal fun <T> Array<T>.sliceArray(startIndex: Int) =
-    sliceArray(startIndex until size)
+    sliceArrayUntil(startIndex, size)
 
 internal fun <T> Array<T>.sliceArrayTo(endIndex: Int) =
     sliceArray(0..endIndex)
+
+internal fun <T> Array<T>.sliceArrayUntil(endIndex: Int) =
+    sliceArray(0 until endIndex)
+
+internal fun <T> Array<T>.sliceArrayTo(startIndex: Int, endIndex: Int) =
+    sliceArray(startIndex..endIndex)
+
+internal fun <T> Array<T>.sliceArrayUntil(startIndex: Int, endIndex: Int) =
+    sliceArray(startIndex until endIndex)
 
 internal fun <T> List<T>.second() = get(1)
 

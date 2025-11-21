@@ -491,18 +491,18 @@ context(scope: I)
 inline infix fun <T : I, I, U, V, W, R, S> (suspend T.(U, V, W) -> R)?.thruSuspendedImplicitly(crossinline pass: suspend (I, R) -> S): (suspend T.(U, V, W) -> S)? = letResult { { u, v, w ->
     pass(scope, it(u, v, w)) } }
 
-inline fun <I, T : I, U, V, W, R> (suspend T.(U, V, W) ->R)?.given(crossinline predicate: Predicate, crossinline fallback: suspend I.(U, V, W) -> R): (suspend T.(U, V, W) -> R)? = letResult { { u, v, w ->
+inline fun <I, T : I, U, V, W, R> (suspend T.(U, V, W) -> R)?.given(crossinline predicate: Predicate, crossinline fallback: suspend I.(U, V, W) -> R): (suspend T.(U, V, W) -> R)? = letResult { { u, v, w ->
     if (predicate()) it(u, v, w) else fallback(u, v, w) } }
 
 context(scope: I)
-inline fun <T : I, I, U, V, W, R> (suspend T.(U, V, W) ->R)?.givenSuspendedImplicitly(crossinline predicate: Predicate, crossinline fallback: suspend (I, U, V, W) -> R): (suspend T.(U, V, W) -> R)? =
+inline fun <T : I, I, U, V, W, R> (suspend T.(U, V, W) -> R)?.givenSuspendedImplicitly(crossinline predicate: Predicate, crossinline fallback: suspend (I, U, V, W) -> R): (suspend T.(U, V, W) -> R)? =
     given(predicate) { u, v, w -> fallback(scope, u, v, w) }
 
-inline fun <I, T : I, U, V, W, R> (suspend T.(U, V, W) ->R)?.unless(noinline predicate: Predicate, crossinline fallback: suspend I.(U, V, W) -> R): (suspend T.(U, V, W) -> R)? =
+inline fun <I, T : I, U, V, W, R> (suspend T.(U, V, W) -> R)?.unless(noinline predicate: Predicate, crossinline fallback: suspend I.(U, V, W) -> R): (suspend T.(U, V, W) -> R)? =
     given(predicate::isFalse, fallback)
 
 context(scope: I)
-inline fun <T : I, I, U, V, W, R> (suspend T.(U, V, W) ->R)?.unlessSuspendedImplicitly(noinline predicate: Predicate, crossinline fallback: suspend (I, U, V, W) -> R): (suspend T.(U, V, W) -> R)? =
+inline fun <T : I, I, U, V, W, R> (suspend T.(U, V, W) -> R)?.unlessSuspendedImplicitly(noinline predicate: Predicate, crossinline fallback: suspend (I, U, V, W) -> R): (suspend T.(U, V, W) -> R)? =
     unless(predicate) { u, v, w -> fallback(scope, u, v, w) }
 
 inline infix fun <R, S> (() -> R)?.then(crossinline next: () -> S): (() -> S)? = letResult { {
