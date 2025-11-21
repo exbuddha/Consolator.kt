@@ -38,7 +38,7 @@ abstract class MigrationManager : Resolver {
                     startIndex = 2
                     context.second().asObjectProvider()
                     ?.provide(TransitionManager::class)
-                }?.asTransitionManager()?.commit(context.sliceArray(startIndex)) }
+                }?.asTransitionManager()?.commit(*context.sliceArray(startIndex)) }
             else ->
                 null }
 
