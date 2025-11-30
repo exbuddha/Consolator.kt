@@ -216,9 +216,10 @@ sealed interface SchedulerScope : ResolverScope {
         internal fun Fragment.commitAttach(context: Context) {}
 
         internal fun Fragment.commitStart() {
-            if ((foregroundLifecycleOwner isObject activity) or
-                foregroundLifecycleOwner.typeIs<SchedulerFragment, _>() or
-                foregroundLifecycleOwner.isNullValue())
+            if (with(foregroundLifecycleOwner) {
+                isObject(activity) or
+                typeIs<SchedulerFragment, _>() or
+                isNullValue() })
                 foregroundLifecycleOwner = this }
 
         internal fun Fragment.commitResume() {}
@@ -1536,7 +1537,7 @@ private fun <I : AnyTransactor> I.runnable(target: AnyKClass, key: KeyType) =
 
 internal fun FunctionSet.addFunction(function: Any, tag: TagType?, keep: Boolean) =
     add(function.toFunctionItem(
-        tag?.let { { it } }
+        tag?.asPointer()
             ?: currentThreadJob()::hashTag,
         keep))
 
