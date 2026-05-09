@@ -65,7 +65,7 @@ interface BaseServiceScope : ResolverScope, ReferredContext, UniqueContext.Insta
         if (State[2] is Resolved) return
         intent.setStartTime()
         fun Any?.applyTrackTag() =
-            tag.result { applyTrackTag(this, items) }
+            tag.result { this@applyTrackTag.applyTrackTag(this, items) }
         if (isLogDbNull) {
             @LaunchContext(IO) @LaunchMode(async = true)
             @Tag(STAGE_BUILD_LOG_DB)
