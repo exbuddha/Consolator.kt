@@ -161,7 +161,7 @@ internal open class DefaultFragment : BaseFragment(), LifecycleProvider {
         override fun <R> provide(vararg tag: TagType): KCallable<R> =
             blockOnTrueOrRestrict(
                 LifecycleOwner::isForegroundProvider) {
-            defaultActivity.crossProvide<R>(*tag) }
+            defaultActivity.crossProvide(*tag) }
 
         private val defaultActivity: DefaultActivity
             get() = activity as DefaultActivity

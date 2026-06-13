@@ -10,7 +10,7 @@ internal interface Validator {
 }
 
 @Suppress("UNCHECKED_CAST")
-internal fun <T, R : Any?> T.validateType(): R = this as R
+internal fun <T, R> T.validateType(): R = this as R
 
 inline fun <reified T, reified O> isType(it: O): Boolean = it is T
 

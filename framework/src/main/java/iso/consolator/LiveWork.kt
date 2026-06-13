@@ -128,7 +128,7 @@ internal fun <T, R> Pair<LiveData<T>, (T) -> R>.removeObservers(owner: Lifecycle
     first.removeObservers(owner)
 
 internal fun <T, R> observerOf(liveStep: Pair<LiveData<T>, (T) -> R>): Observer<T> =
-    Observer<T> { liveStep.second(it) }
+    Observer { liveStep.second(it) }
 
 private fun <T, R> disposerOf(liveStep: Pair<LiveData<T>, (T) -> R>): Observer<T> =
     object : Observer<T> {
@@ -138,7 +138,7 @@ private fun <T, R> disposerOf(liveStep: Pair<LiveData<T>, (T) -> R>): Observer<T
             capture(value) } }
 
 private fun <T, R> LifecycleOwner.disposerOf(liveStep: Pair<LiveData<T>, (T) -> R>): Observer<T> =
-    Observer<T> { value ->
+    Observer { value ->
         val (step, capture) = liveStep
         run(step::removeObservers)
         capture(value) }

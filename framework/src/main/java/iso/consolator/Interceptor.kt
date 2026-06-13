@@ -7,9 +7,9 @@ sealed interface Interceptor<in T> {
     fun <S : T> T.intercept(vararg args: Any?): S
 
     companion object : BaseInterceptor, Validator {
-        override fun <S : Any?> Any?.intercept(vararg args: Any?): S =
+        override fun <S> Any?.intercept(vararg args: Any?): S =
             result { Unit.nullType(this::class) }
-            .validate<_, S>()
+            .validate()
 
         override operator fun invoke(step: Interception?): BaseInterceptor =
             super.invoke(step)

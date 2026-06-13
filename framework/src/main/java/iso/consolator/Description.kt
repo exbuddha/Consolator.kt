@@ -147,7 +147,7 @@ annotation class Track(
     @Retention(SOURCE)
     @Target(CLASS, FUNCTION, PROPERTY, ANNOTATION_CLASS)
     annotation class Relative(
-        /* sets timeframe-related requirements among sibling annotations as well as static meta-data */
+        /* sets timeframe-related requirements among sibling annotations as well as static metadata */
         val id: ItemID = no_item) {
 
         @Retention(SOURCE)

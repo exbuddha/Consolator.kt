@@ -1033,7 +1033,7 @@ internal object Scheduler : SchedulerScope, LiveStepReceiver.Synchronizer<LiveSt
                 lock.isScheduledAhead })
                 block()
             else {
-            fun AnyFunctionList.run() { map {
+            fun AnyFunctionList.run() { forEach {
                 remove(it)
                 it() } }
             if (lock.isScheduledLast) {

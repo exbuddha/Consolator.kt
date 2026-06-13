@@ -32,7 +32,7 @@ sealed interface ActionIntent
 //  A. dependency (progressive)
 //  B. expectancy (regressive)
 //  C. order (template)
-// order and dependency planes are cold planes in the computer language way of problem solving
+// order and dependency planes are cold planes in the computer language way of problem-solving
 // this is a requirement that mandates itself by the involvement of time and unknown entities in existence at runtime
 // with respect to limitations in computation such as memory shortage and logical destruction
 // in a program, order governs the dependency layer and its design (language, descriptiveness, etc.)

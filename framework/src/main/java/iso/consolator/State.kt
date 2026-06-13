@@ -246,7 +246,7 @@ sealed class BaseState : State, IndexNumber() {
 sealed class OpenState : BaseState() {
     abstract fun <S : Number> S.asUnifiedStateId(): Number
 
-    // may rollback unto description plane
+    // may roll back unto description plane
     internal abstract inner class BooleanTypeState : OpenState(), BooleanState
 }
 
