@@ -118,19 +118,33 @@ internal inline fun <R> tryInterruptingForResult(msg: String? = null, noinline s
     catch (ex: InterruptedException) { rejectWithException<InterruptedStepException>(step, msg, ex) }
     catch (ex: Throwable) { exit(ex) }
 
-internal inline fun <reified X : Throwable, T, R : T> runOrRejectWithException(vararg args: Any?, predicate: () -> Boolean, block: () -> R): T {
+internal inline fun <reified X : Throwable, T, R : T> runOrRejectWithException(vararg args: Any?, predicate: () -> Boolean, crossinline block: () -> R): T {
     if (predicate()) return block()
     rejectWithException<X>(*args) }
 
-inline fun <reified X : Throwable, T, R : T> runOrRejectWithException(ex: (AnyArray) -> X, vararg args: Any?, predicate: () -> Boolean, block: () -> R): T {
+inline fun <reified X : Throwable, T, R : T> runOrRejectWithException(crossinline ex: (AnyArray) -> X, vararg args: Any?, predicate: () -> Boolean, crossinline block: () -> R): T {
     if (predicate()) return block()
     rejectWithException<X>(ex, *args) }
 
-internal inline fun <reified X : Throwable, T, R : T> runUnlessOrRejectWithException(vararg args: Any?, noinline predicate: () -> Boolean, block: () -> R) =
+internal suspend inline fun <reified X : Throwable, T, R : T> runSuspendedOrRejectWithException(vararg args: Any?, predicate: () -> Boolean, crossinline block: suspend () -> R): T {
+    if (predicate()) return block()
+    rejectWithException<X>(*args) }
+
+internal suspend inline fun <reified X : Throwable, T, R : T> runSuspendedOrRejectWithException(crossinline ex: (AnyArray) -> X, vararg args: Any?, predicate: () -> Boolean, crossinline block: suspend () -> R): T {
+    if (predicate()) return block()
+    rejectWithException<X>(ex, *args) }
+
+internal inline fun <reified X : Throwable, T, R : T> runUnlessOrRejectWithException(vararg args: Any?, noinline predicate: () -> Boolean, crossinline block: () -> R): R =
     runOrRejectWithException<X, _, _>(*args, predicate = predicate::not, block = block)
 
-internal inline fun <reified X : Throwable, T, R : T> runUnlessOrRejectWithException(ex: (AnyArray) -> X, vararg args: Any?, noinline predicate: () -> Boolean, block: () -> R) =
+internal inline fun <reified X : Throwable, T, R : T> runUnlessOrRejectWithException(crossinline ex: (AnyArray) -> X, vararg args: Any?, noinline predicate: () -> Boolean, crossinline block: () -> R): R =
     runOrRejectWithException<X, _, _>(ex, *args, predicate = predicate::not, block = block)
+
+internal suspend inline fun <reified X : Throwable, T, R : T> runSuspendedUnlessOrRejectWithException(vararg args: Any?, noinline predicate: () -> Boolean, crossinline block: suspend () -> R): R =
+    runSuspendedOrRejectWithException<X, _, _>(*args, predicate = predicate::not, block = block)
+
+internal suspend inline fun <reified X : Throwable, T, R : T> runSuspendedUnlessOrRejectWithException(crossinline ex: (AnyArray) -> X, vararg args: Any?, noinline predicate: () -> Boolean, crossinline block: suspend () -> R): R =
+    runSuspendedOrRejectWithException<X, _, _>(ex, *args, predicate = predicate::not, block = block)
 
 @Throws
 internal fun rejectWithIllegalStateException(): Nothing = rejectWithException<IllegalStateException>()
@@ -146,7 +160,7 @@ inline fun <reified X : Throwable> rejectWithException(vararg args: Any?): Nothi
     throwIt(X::class.new(*args))
 
 @Throws
-inline fun <reified X : Throwable> rejectWithException(ex: (AnyArray) -> X, vararg args: Any?): Nothing =
+inline fun <reified X : Throwable> rejectWithException(crossinline ex: (AnyArray) -> X, vararg args: Any?): Nothing =
     throwIt(ex(args))
 
 @Throws

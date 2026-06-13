@@ -12,6 +12,10 @@ pluginManagement {
     }
 }
 
+plugins {
+    id("org.gradle.toolchains.foojay-resolver-convention") version "1.0.0"
+}
+
 @Suppress("UnstableApiUsage")
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
@@ -23,9 +27,9 @@ dependencyResolutionManagement {
 
 rootProject.name = "Consolator"
 
+include(":abstract")
+include(":app")
 include(":consolator")
 include(":context")
 include(":database")
 include(":framework")
-include(":abstract")
-include(":app")

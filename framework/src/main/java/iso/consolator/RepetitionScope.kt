@@ -18,76 +18,76 @@ sealed interface CallableRepetitionScope : RepetitionScope
 
 // implicit space (in-scope)
 
-internal suspend inline fun <I : U, U : CoroutineScope, T> I.repeatBlock(noinline predicate: Prediction? = null, noinline delayTime: DelayFunction = NO_DELAY, crossinline block: suspend U.() -> T) {
+internal suspend inline fun <I : U, U : CoroutineScope, T> I.repeatBlock(noinline predicate: SuspendedPredicate? = null, noinline delayTime: DelayFunction = NO_DELAY, crossinline block: suspend U.() -> T) {
     while (addedSuspendedIsActive(predicate)()) {
         block() // will be intercepted for reactivity
         delayOrYield(delayTime()) } }
 
-private suspend inline fun <I : U, U : CoroutineScope, T, reified X : TimeoutCancellation> I.repeatBlockOrTimeout(noinline predicate: Prediction? = null, noinline delayTime: DelayFunction = NO_DELAY, noinline downTime: DelayFunction, msg: String? = null, cause: Throwable? = null, crossinline block: suspend U.() -> T) {
+private suspend inline fun <I : U, U : CoroutineScope, T, reified X : TimeoutCancellation> I.repeatBlockOrTimeout(noinline predicate: SuspendedPredicate? = null, noinline delayTime: DelayFunction = NO_DELAY, noinline downTime: DelayFunction, msg: String? = null, cause: Throwable? = null, crossinline block: suspend U.() -> T) {
     while (addedSuspendedIsActiveNotTimedOut(downTime, predicate)()) {
         block() // will be intercepted for reactivity
         delayOrTimeout<_, X>(delayTime(), downTime(), msg, cause) } }
 
-private suspend inline fun <I : U, U : CoroutineScope, T, reified X : TimeoutCancellation> I.repeatBlockOrTimeout(noinline predicate: Prediction? = null, noinline delayTime: DelayFunction = NO_DELAY, noinline downTime: DelayFunction, crossinline ex: (AnyArray) -> X = { it.rejectAsException<X>() }, vararg args: Any?, crossinline block: suspend U.() -> T) {
+private suspend inline fun <I : U, U : CoroutineScope, T, reified X : TimeoutCancellation> I.repeatBlockOrTimeout(noinline predicate: SuspendedPredicate? = null, noinline delayTime: DelayFunction = NO_DELAY, noinline downTime: DelayFunction, crossinline ex: (AnyArray) -> X = { it.rejectAsException<X>() }, vararg args: Any?, crossinline block: suspend U.() -> T) {
     while (addedSuspendedIsActiveNotTimedOut(downTime, predicate)()) {
         block() // will be intercepted for reactivity
         delayOrTimeout<_, X>(delayTime(), downTime(), ex, *args) } }
 
-private suspend inline fun <I : U, U : CoroutineScope, S, T : S> I.repeatBlockForResult(noinline predicate: Prediction? = null, noinline delayTime: DelayFunction = NO_DELAY, crossinline block: suspend U.() -> T, crossinline condition: (S?, (S?) -> Boolean) -> Boolean): S =
+private suspend inline fun <I : U, U : CoroutineScope, S, T : S> I.repeatBlockForResult(noinline predicate: SuspendedPredicate? = null, noinline delayTime: DelayFunction = NO_DELAY, crossinline block: suspend U.() -> T, crossinline condition: (S?, (S?) -> Boolean) -> Boolean): S =
     repeatBlockDeterminedForOutResult(predicate, delayTime, block, condition, intercept = TODO() /* Implicit<I>() */) // or instead, pair with an exception mapper
 
-private suspend inline fun <I : U, U : CoroutineScope, S, T : S> I.repeatBlockForResultUnless(noinline predicate: Prediction? = null, noinline delayTime: DelayFunction = NO_DELAY, crossinline block: suspend U.() -> T, noinline condition: (S?, (S?) -> Boolean) -> Boolean): S =
+private suspend inline fun <I : U, U : CoroutineScope, S, T : S> I.repeatBlockForResultUnless(noinline predicate: SuspendedPredicate? = null, noinline delayTime: DelayFunction = NO_DELAY, crossinline block: suspend U.() -> T, noinline condition: (S?, (S?) -> Boolean) -> Boolean): S =
     repeatBlockForResult<_, _, _, S>(predicate, delayTime, block, condition::not)
 
-private suspend inline fun <I : U, U : CoroutineScope, S, T : S, reified X : TimeoutCancellation> I.repeatBlockOrTimeoutForResult(noinline predicate: Prediction? = null, noinline delayTime: DelayFunction = NO_DELAY, noinline downTime: DelayFunction, msg: String? = null, cause: Throwable? = null, crossinline block: suspend U.() -> T, crossinline condition: (S?, (S?) -> Boolean) -> Boolean): S =
+private suspend inline fun <I : U, U : CoroutineScope, S, T : S, reified X : TimeoutCancellation> I.repeatBlockOrTimeoutForResult(noinline predicate: SuspendedPredicate? = null, noinline delayTime: DelayFunction = NO_DELAY, noinline downTime: DelayFunction, msg: String? = null, cause: Throwable? = null, crossinline block: suspend U.() -> T, crossinline condition: (S?, (S?) -> Boolean) -> Boolean): S =
     TODO()
 
-private suspend inline fun <I : U, U : CoroutineScope, S, T : S, reified X : TimeoutCancellation> I.repeatBlockOrTimeoutForResultUnless(noinline predicate: Prediction? = null, noinline delayTime: DelayFunction = NO_DELAY, noinline downTime: DelayFunction, msg: String? = null, cause: Throwable? = null, crossinline block: suspend U.() -> T, noinline condition: (S?, (S?) -> Boolean) -> Boolean): S =
+private suspend inline fun <I : U, U : CoroutineScope, S, T : S, reified X : TimeoutCancellation> I.repeatBlockOrTimeoutForResultUnless(noinline predicate: SuspendedPredicate? = null, noinline delayTime: DelayFunction = NO_DELAY, noinline downTime: DelayFunction, msg: String? = null, cause: Throwable? = null, crossinline block: suspend U.() -> T, noinline condition: (S?, (S?) -> Boolean) -> Boolean): S =
     repeatBlockOrTimeoutForResult<_, _, _, S, X>(predicate, delayTime, downTime, msg, cause, block, condition::not)
 
-private suspend inline fun <I : U, U : CoroutineScope, S, T : S, reified X : TimeoutCancellation> I.repeatBlockOrTimeoutForResult(noinline predicate: Prediction? = null, noinline delayTime: DelayFunction = NO_DELAY, noinline downTime: DelayFunction, crossinline ex: (AnyArray) -> X = { it.rejectAsException<X>() }, vararg args: Any?, crossinline block: suspend U.() -> T, crossinline condition: (S?, (S?) -> Boolean) -> Boolean): S =
+private suspend inline fun <I : U, U : CoroutineScope, S, T : S, reified X : TimeoutCancellation> I.repeatBlockOrTimeoutForResult(noinline predicate: SuspendedPredicate? = null, noinline delayTime: DelayFunction = NO_DELAY, noinline downTime: DelayFunction, crossinline ex: (AnyArray) -> X = { it.rejectAsException<X>() }, vararg args: Any?, crossinline block: suspend U.() -> T, crossinline condition: (S?, (S?) -> Boolean) -> Boolean): S =
     TODO()
 
-private suspend inline fun <I : U, U : CoroutineScope, S, T : S, reified X : TimeoutCancellation> I.repeatBlockOrTimeoutForResultUnless(noinline predicate: Prediction? = null, noinline delayTime: DelayFunction = NO_DELAY, noinline downTime: DelayFunction, crossinline ex: (AnyArray) -> X = { it.rejectAsException<X>() }, vararg args: Any?, crossinline block: suspend U.() -> T, noinline condition: (S?, (S?) -> Boolean) -> Boolean): S =
+private suspend inline fun <I : U, U : CoroutineScope, S, T : S, reified X : TimeoutCancellation> I.repeatBlockOrTimeoutForResultUnless(noinline predicate: SuspendedPredicate? = null, noinline delayTime: DelayFunction = NO_DELAY, noinline downTime: DelayFunction, crossinline ex: (AnyArray) -> X = { it.rejectAsException<X>() }, vararg args: Any?, crossinline block: suspend U.() -> T, noinline condition: (S?, (S?) -> Boolean) -> Boolean): S =
     repeatBlockOrTimeoutForResult<_, _, _, S, X>(predicate, delayTime, downTime, ex, *args, block = block, condition = condition::not)
 
-private suspend inline fun <I : U, U : CoroutineScope, O, A : O, B : O, T, S : T> I.repeatBlockDeterminedForOutResult(noinline predicate: Prediction? = null, noinline delayTime: DelayFunction = NO_DELAY, crossinline block: suspend U.() -> T, crossinline condition: (T?, (T?) -> B) -> A, noinline avoid: (suspend (T?) -> Boolean)? = null, crossinline intercept: (T?) -> B, noinline determinant: ((A, B?) -> S)? = null): S =
+private suspend inline fun <I : U, U : CoroutineScope, O, A : O, B : O, T, S : T> I.repeatBlockDeterminedForOutResult(noinline predicate: SuspendedPredicate? = null, noinline delayTime: DelayFunction = NO_DELAY, crossinline block: suspend U.() -> T, crossinline condition: (T?, (T?) -> B) -> A, noinline avoid: (suspend (T?) -> Boolean)? = null, crossinline intercept: (T?) -> B, noinline determinant: ((A, B?) -> S)? = null): S =
     TODO()
 
-private suspend inline fun <I : U, U : CoroutineScope, O, A : O, B : O, T, S : T> I.repeatBlockDeterminedForOutResultUnless(noinline predicate: Prediction? = null, noinline delayTime: DelayFunction = NO_DELAY, crossinline block: suspend U.() -> T, noinline condition: (T?, (T?) -> B) -> A, noinline avoid: (suspend (T?) -> Boolean)? = null, crossinline intercept: (T?) -> B, noinline determinant: ((A, B?) -> S)? = null): S =
+private suspend inline fun <I : U, U : CoroutineScope, O, A : O, B : O, T, S : T> I.repeatBlockDeterminedForOutResultUnless(noinline predicate: SuspendedPredicate? = null, noinline delayTime: DelayFunction = NO_DELAY, crossinline block: suspend U.() -> T, noinline condition: (T?, (T?) -> B) -> A, noinline avoid: (suspend (T?) -> Boolean)? = null, crossinline intercept: (T?) -> B, noinline determinant: ((A, B?) -> S)? = null): S =
     TODO()
 
-private suspend inline fun <I : U, U : CoroutineScope, O, A : O, B : O, T, S : T, reified X : TimeoutCancellation> I.repeatBlockDeterminedOrTimeoutForOutResult(noinline predicate: Prediction? = null, noinline delayTime: DelayFunction = NO_DELAY, noinline downTime: DelayFunction, msg: String? = null, cause: Throwable? = null, crossinline block: suspend U.() -> T, crossinline condition: (T?, (T?) -> B) -> A, noinline avoid: (suspend (T?) -> Boolean)? = null, crossinline intercept: (T?) -> B, noinline determinant: ((A, B?) -> S)? = null): S =
+private suspend inline fun <I : U, U : CoroutineScope, O, A : O, B : O, T, S : T, reified X : TimeoutCancellation> I.repeatBlockDeterminedOrTimeoutForOutResult(noinline predicate: SuspendedPredicate? = null, noinline delayTime: DelayFunction = NO_DELAY, noinline downTime: DelayFunction, msg: String? = null, cause: Throwable? = null, crossinline block: suspend U.() -> T, crossinline condition: (T?, (T?) -> B) -> A, noinline avoid: (suspend (T?) -> Boolean)? = null, crossinline intercept: (T?) -> B, noinline determinant: ((A, B?) -> S)? = null): S =
     TODO()
 
-private suspend inline fun <I : U, U : CoroutineScope, O, A : O, B : O, T, S : T, reified X : TimeoutCancellation> I.repeatBlockDeterminedOrTimeoutForOutResultUnless(noinline predicate: Prediction? = null, noinline delayTime: DelayFunction = NO_DELAY, noinline downTime: DelayFunction, msg: String? = null, cause: Throwable? = null, crossinline block: suspend U.() -> T, noinline condition: (T?, (T?) -> B) -> A, noinline avoid: (suspend (T?) -> Boolean)? = null, crossinline intercept: (T?) -> B, noinline determinant: ((A, B?) -> S)? = null): S =
+private suspend inline fun <I : U, U : CoroutineScope, O, A : O, B : O, T, S : T, reified X : TimeoutCancellation> I.repeatBlockDeterminedOrTimeoutForOutResultUnless(noinline predicate: SuspendedPredicate? = null, noinline delayTime: DelayFunction = NO_DELAY, noinline downTime: DelayFunction, msg: String? = null, cause: Throwable? = null, crossinline block: suspend U.() -> T, noinline condition: (T?, (T?) -> B) -> A, noinline avoid: (suspend (T?) -> Boolean)? = null, crossinline intercept: (T?) -> B, noinline determinant: ((A, B?) -> S)? = null): S =
     TODO()
 
-private suspend inline fun <I : U, U : CoroutineScope, O, A : O, B : O, T, S : T, reified X : TimeoutCancellation> I.repeatBlockDeterminedOrTimeoutForOutResult(noinline predicate: Prediction? = null, noinline delayTime: DelayFunction = NO_DELAY, noinline downTime: DelayFunction, crossinline ex: (AnyArray) -> X = { it.rejectAsException<X>() }, vararg args: Any?, crossinline block: suspend U.() -> T, crossinline condition: (T?, (T?) -> B) -> A, noinline avoid: (suspend (T?) -> Boolean)? = null, crossinline intercept: (T?) -> B, noinline determinant: ((A, B?) -> S)? = null): S =
+private suspend inline fun <I : U, U : CoroutineScope, O, A : O, B : O, T, S : T, reified X : TimeoutCancellation> I.repeatBlockDeterminedOrTimeoutForOutResult(noinline predicate: SuspendedPredicate? = null, noinline delayTime: DelayFunction = NO_DELAY, noinline downTime: DelayFunction, crossinline ex: (AnyArray) -> X = { it.rejectAsException<X>() }, vararg args: Any?, crossinline block: suspend U.() -> T, crossinline condition: (T?, (T?) -> B) -> A, noinline avoid: (suspend (T?) -> Boolean)? = null, crossinline intercept: (T?) -> B, noinline determinant: ((A, B?) -> S)? = null): S =
     TODO()
 
-private suspend inline fun <I : U, U : CoroutineScope, O, A : O, B : O, T, S : T, reified X : TimeoutCancellation> I.repeatBlockDeterminedOrTimeoutForOutResultUnless(noinline predicate: Prediction? = null, noinline delayTime: DelayFunction = NO_DELAY, noinline downTime: DelayFunction, crossinline ex: (AnyArray) -> X = { it.rejectAsException<X>() }, vararg args: Any?, crossinline block: suspend U.() -> T, noinline condition: (T?, (T?) -> B) -> A, noinline avoid: (suspend (T?) -> Boolean)? = null, crossinline intercept: (T?) -> B, noinline determinant: ((A, B?) -> S)? = null): S =
+private suspend inline fun <I : U, U : CoroutineScope, O, A : O, B : O, T, S : T, reified X : TimeoutCancellation> I.repeatBlockDeterminedOrTimeoutForOutResultUnless(noinline predicate: SuspendedPredicate? = null, noinline delayTime: DelayFunction = NO_DELAY, noinline downTime: DelayFunction, crossinline ex: (AnyArray) -> X = { it.rejectAsException<X>() }, vararg args: Any?, crossinline block: suspend U.() -> T, noinline condition: (T?, (T?) -> B) -> A, noinline avoid: (suspend (T?) -> Boolean)? = null, crossinline intercept: (T?) -> B, noinline determinant: ((A, B?) -> S)? = null): S =
     TODO()
 
-private suspend inline fun <I : U, U : CoroutineScope, O, A : O, B : O, T, S : T> I.repeatBlockDeterminedForInResult(noinline predicate: Prediction? = null, noinline delayTime: DelayFunction = NO_DELAY, crossinline block: suspend U.() -> S, crossinline condition: (S?, (T?) -> B) -> A, noinline avoid: (suspend (T?) -> Boolean)? = null, crossinline intercept: (T?) -> B, noinline determinant: ((A, B?) -> S)? = null): T =
+private suspend inline fun <I : U, U : CoroutineScope, O, A : O, B : O, T, S : T> I.repeatBlockDeterminedForInResult(noinline predicate: SuspendedPredicate? = null, noinline delayTime: DelayFunction = NO_DELAY, crossinline block: suspend U.() -> S, crossinline condition: (S?, (T?) -> B) -> A, noinline avoid: (suspend (T?) -> Boolean)? = null, crossinline intercept: (T?) -> B, noinline determinant: ((A, B?) -> S)? = null): T =
     TODO()
 
-private suspend inline fun <I : U, U : CoroutineScope, O, A : O, B : O, T, S : T> I.repeatBlockDeterminedForInResultUnless(noinline predicate: Prediction? = null, noinline delayTime: DelayFunction = NO_DELAY, crossinline block: suspend U.() -> S, noinline condition: (S?, (T?) -> B) -> A, noinline avoid: (suspend (T?) -> Boolean)? = null, crossinline intercept: (T?) -> B, noinline determinant: ((A, B?) -> S)? = null): T =
+private suspend inline fun <I : U, U : CoroutineScope, O, A : O, B : O, T, S : T> I.repeatBlockDeterminedForInResultUnless(noinline predicate: SuspendedPredicate? = null, noinline delayTime: DelayFunction = NO_DELAY, crossinline block: suspend U.() -> S, noinline condition: (S?, (T?) -> B) -> A, noinline avoid: (suspend (T?) -> Boolean)? = null, crossinline intercept: (T?) -> B, noinline determinant: ((A, B?) -> S)? = null): T =
     TODO()
 
-private suspend inline fun <I : U, U : CoroutineScope, O, A : O, B : O, T, S : T, reified X : TimeoutCancellation> I.repeatBlockDeterminedOrTimeoutForInResult(noinline predicate: Prediction? = null, noinline delayTime: DelayFunction = NO_DELAY, noinline downTime: DelayFunction, msg: String? = null, cause: Throwable? = null, crossinline block: suspend U.() -> S, crossinline condition: (S?, (T?) -> B) -> A, noinline avoid: (suspend (T?) -> Boolean)? = null, crossinline intercept: (T?) -> B, noinline determinant: ((A, B?) -> S)? = null): T =
+private suspend inline fun <I : U, U : CoroutineScope, O, A : O, B : O, T, S : T, reified X : TimeoutCancellation> I.repeatBlockDeterminedOrTimeoutForInResult(noinline predicate: SuspendedPredicate? = null, noinline delayTime: DelayFunction = NO_DELAY, noinline downTime: DelayFunction, msg: String? = null, cause: Throwable? = null, crossinline block: suspend U.() -> S, crossinline condition: (S?, (T?) -> B) -> A, noinline avoid: (suspend (T?) -> Boolean)? = null, crossinline intercept: (T?) -> B, noinline determinant: ((A, B?) -> S)? = null): T =
     TODO()
 
-private suspend inline fun <I : U, U : CoroutineScope, O, A : O, B : O, T, S : T, reified X : TimeoutCancellation> I.repeatBlockDeterminedOrTimeoutForInResultUnless(noinline predicate: Prediction? = null, noinline delayTime: DelayFunction = NO_DELAY, noinline downTime: DelayFunction, msg: String? = null, cause: Throwable? = null, crossinline block: suspend U.() -> S, noinline condition: (S?, (T?) -> B) -> A, noinline avoid: (suspend (T?) -> Boolean)? = null, crossinline intercept: (T?) -> B, noinline determinant: ((A, B?) -> S)? = null): T =
+private suspend inline fun <I : U, U : CoroutineScope, O, A : O, B : O, T, S : T, reified X : TimeoutCancellation> I.repeatBlockDeterminedOrTimeoutForInResultUnless(noinline predicate: SuspendedPredicate? = null, noinline delayTime: DelayFunction = NO_DELAY, noinline downTime: DelayFunction, msg: String? = null, cause: Throwable? = null, crossinline block: suspend U.() -> S, noinline condition: (S?, (T?) -> B) -> A, noinline avoid: (suspend (T?) -> Boolean)? = null, crossinline intercept: (T?) -> B, noinline determinant: ((A, B?) -> S)? = null): T =
     TODO()
 
-private suspend inline fun <I : U, U : CoroutineScope, O, A : O, B : O, T, S : T, reified X : TimeoutCancellation> I.repeatBlockDeterminedOrTimeoutForInResult(noinline predicate: Prediction? = null, noinline delayTime: DelayFunction = NO_DELAY, noinline downTime: DelayFunction, crossinline ex: (AnyArray) -> X = { it.rejectAsException<X>() }, vararg args: Any?, crossinline block: suspend U.() -> S, crossinline condition: (S?, (T?) -> B) -> A, noinline avoid: (suspend (T?) -> Boolean)? = null, crossinline intercept: (T?) -> B, noinline determinant: ((A, B?) -> S)? = null): T =
+private suspend inline fun <I : U, U : CoroutineScope, O, A : O, B : O, T, S : T, reified X : TimeoutCancellation> I.repeatBlockDeterminedOrTimeoutForInResult(noinline predicate: SuspendedPredicate? = null, noinline delayTime: DelayFunction = NO_DELAY, noinline downTime: DelayFunction, crossinline ex: (AnyArray) -> X = { it.rejectAsException<X>() }, vararg args: Any?, crossinline block: suspend U.() -> S, crossinline condition: (S?, (T?) -> B) -> A, noinline avoid: (suspend (T?) -> Boolean)? = null, crossinline intercept: (T?) -> B, noinline determinant: ((A, B?) -> S)? = null): T =
     TODO()
 
-private suspend inline fun <I : U, U : CoroutineScope, O, A : O, B : O, T, S : T, reified X : TimeoutCancellation> I.repeatBlockDeterminedOrTimeoutForInResultUnless(noinline predicate: Prediction? = null, noinline delayTime: DelayFunction = NO_DELAY, noinline downTime: DelayFunction, crossinline ex: (AnyArray) -> X = { it.rejectAsException<X>() }, vararg args: Any?, crossinline block: suspend U.() -> S, noinline condition: (S?, (T?) -> B) -> A, noinline avoid: (suspend (T?) -> Boolean)? = null, crossinline intercept: (T?) -> B, noinline determinant: ((A, B?) -> S)? = null): T =
+private suspend inline fun <I : U, U : CoroutineScope, O, A : O, B : O, T, S : T, reified X : TimeoutCancellation> I.repeatBlockDeterminedOrTimeoutForInResultUnless(noinline predicate: SuspendedPredicate? = null, noinline delayTime: DelayFunction = NO_DELAY, noinline downTime: DelayFunction, crossinline ex: (AnyArray) -> X = { it.rejectAsException<X>() }, vararg args: Any?, crossinline block: suspend U.() -> S, noinline condition: (S?, (T?) -> B) -> A, noinline avoid: (suspend (T?) -> Boolean)? = null, crossinline intercept: (T?) -> B, noinline determinant: ((A, B?) -> S)? = null): T =
     TODO()
 
-private suspend inline fun <I : U, U : CoroutineScope, S, T : S, R> I.repeatBlockForValidResult(noinline predicate: Prediction? = null, noinline delayTime: DelayFunction = NO_DELAY, crossinline block: suspend U.() -> T, crossinline condition: (S?, (S?) -> Unit) -> BooleanType, noinline avoid: (suspend (S?) -> Boolean)? = null, noinline intercept: (S?) -> Unit, noinline validate: ((S?) -> R)? = null, crossinline reactToExposedInterceptorNotCalled: Work = ::rejectWithSecurityException): R {
+private suspend inline fun <I : U, U : CoroutineScope, S, T : S, R> I.repeatBlockForValidResult(noinline predicate: SuspendedPredicate? = null, noinline delayTime: DelayFunction = NO_DELAY, crossinline block: suspend U.() -> T, crossinline condition: (S?, (S?) -> Unit) -> BooleanType, noinline avoid: (suspend (S?) -> Boolean)? = null, noinline intercept: (S?) -> Unit, noinline validate: ((S?) -> R)? = null, crossinline reactToExposedInterceptorNotCalled: Work = ::rejectWithSecurityException): R {
     var value: S? = null
     var isAccepted = false
     var isIntercepted = false // used when intercept is exposed
@@ -120,19 +120,19 @@ private suspend inline fun <I : U, U : CoroutineScope, S, T : S, R> I.repeatBloc
     else
         rejectWithImplementationRestriction() }
 
-private suspend inline fun <I : U, U : CoroutineScope, S, T : S, R> I.repeatBlockForValidResultUnless(noinline predicate: Prediction? = null, noinline delayTime: DelayFunction = NO_DELAY, crossinline block: suspend U.() -> T, noinline condition: (S?, (S?) -> Unit) -> BooleanType, noinline avoid: (suspend (S?) -> Boolean)? = null, noinline intercept: (S?) -> Unit, noinline validate: ((S?) -> R)? = null, crossinline reactToExposedInterceptorNotCalled: Work = ::rejectWithSecurityException): R =
+private suspend inline fun <I : U, U : CoroutineScope, S, T : S, R> I.repeatBlockForValidResultUnless(noinline predicate: SuspendedPredicate? = null, noinline delayTime: DelayFunction = NO_DELAY, crossinline block: suspend U.() -> T, noinline condition: (S?, (S?) -> Unit) -> BooleanType, noinline avoid: (suspend (S?) -> Boolean)? = null, noinline intercept: (S?) -> Unit, noinline validate: ((S?) -> R)? = null, crossinline reactToExposedInterceptorNotCalled: Work = ::rejectWithSecurityException): R =
     repeatBlockForValidResult(predicate, delayTime, block, condition::isFalse, avoid, intercept, validate, reactToExposedInterceptorNotCalled)
 
-private suspend inline fun <I : U, U : CoroutineScope, S, T : S, R, reified X : TimeoutCancellation> I.repeatBlockOrTimeoutForValidResult(noinline predicate: Prediction? = null, noinline delayTime: DelayFunction = NO_DELAY, noinline downTime: DelayFunction, msg: String? = null, cause: Throwable? = null, crossinline block: suspend U.() -> T, crossinline condition: (S?, (S?) -> Unit) -> BooleanType, noinline avoid: (suspend (S?) -> Boolean)? = null, noinline intercept: (S?) -> Unit, noinline validate: ((S?) -> R)? = null, crossinline reactToExposedInterceptorNotCalled: Work = ::rejectWithSecurityException): R = TODO()
+private suspend inline fun <I : U, U : CoroutineScope, S, T : S, R, reified X : TimeoutCancellation> I.repeatBlockOrTimeoutForValidResult(noinline predicate: SuspendedPredicate? = null, noinline delayTime: DelayFunction = NO_DELAY, noinline downTime: DelayFunction, msg: String? = null, cause: Throwable? = null, crossinline block: suspend U.() -> T, crossinline condition: (S?, (S?) -> Unit) -> BooleanType, noinline avoid: (suspend (S?) -> Boolean)? = null, noinline intercept: (S?) -> Unit, noinline validate: ((S?) -> R)? = null, crossinline reactToExposedInterceptorNotCalled: Work = ::rejectWithSecurityException): R = TODO()
 
-private suspend inline fun <I : U, U : CoroutineScope, S, T : S, R, reified X : TimeoutCancellation> I.repeatBlockOrTimeoutForValidResultUnless(noinline predicate: Prediction? = null, noinline delayTime: DelayFunction = NO_DELAY, noinline downTime: DelayFunction, msg: String? = null, cause: Throwable? = null, crossinline block: suspend U.() -> T, noinline condition: (S?, (S?) -> Unit) -> BooleanType, noinline avoid: (suspend (S?) -> Boolean)? = null, noinline intercept: (S?) -> Unit, noinline validate: ((S?) -> R)? = null, crossinline reactToExposedInterceptorNotCalled: Work = ::rejectWithSecurityException): R = TODO()
+private suspend inline fun <I : U, U : CoroutineScope, S, T : S, R, reified X : TimeoutCancellation> I.repeatBlockOrTimeoutForValidResultUnless(noinline predicate: SuspendedPredicate? = null, noinline delayTime: DelayFunction = NO_DELAY, noinline downTime: DelayFunction, msg: String? = null, cause: Throwable? = null, crossinline block: suspend U.() -> T, noinline condition: (S?, (S?) -> Unit) -> BooleanType, noinline avoid: (suspend (S?) -> Boolean)? = null, noinline intercept: (S?) -> Unit, noinline validate: ((S?) -> R)? = null, crossinline reactToExposedInterceptorNotCalled: Work = ::rejectWithSecurityException): R = TODO()
 
-private suspend inline fun <I : U, U : CoroutineScope, S, T : S, R, reified X : TimeoutCancellation> I.repeatBlockOrTimeoutForValidResult(noinline predicate: Prediction? = null, noinline delayTime: DelayFunction = NO_DELAY, noinline downTime: DelayFunction, crossinline ex: (AnyArray) -> X = { it.rejectAsException<X>() }, vararg args: Any?, crossinline block: suspend U.() -> T, crossinline condition: (S?, (S?) -> Unit) -> BooleanType, noinline avoid: (suspend (S?) -> Boolean)? = null, noinline intercept: (S?) -> Unit, noinline validate: ((S?) -> R)? = null, crossinline reactToExposedInterceptorNotCalled: Work = ::rejectWithSecurityException): R = TODO()
+private suspend inline fun <I : U, U : CoroutineScope, S, T : S, R, reified X : TimeoutCancellation> I.repeatBlockOrTimeoutForValidResult(noinline predicate: SuspendedPredicate? = null, noinline delayTime: DelayFunction = NO_DELAY, noinline downTime: DelayFunction, crossinline ex: (AnyArray) -> X = { it.rejectAsException<X>() }, vararg args: Any?, crossinline block: suspend U.() -> T, crossinline condition: (S?, (S?) -> Unit) -> BooleanType, noinline avoid: (suspend (S?) -> Boolean)? = null, noinline intercept: (S?) -> Unit, noinline validate: ((S?) -> R)? = null, crossinline reactToExposedInterceptorNotCalled: Work = ::rejectWithSecurityException): R = TODO()
 
-private suspend inline fun <I : U, U : CoroutineScope, S, T : S, R, reified X : TimeoutCancellation> I.repeatBlockOrTimeoutForValidResultUnless(noinline predicate: Prediction? = null, noinline delayTime: DelayFunction = NO_DELAY, noinline downTime: DelayFunction, crossinline ex: (AnyArray) -> X = { it.rejectAsException<X>() }, vararg args: Any?, crossinline block: suspend U.() -> T, noinline condition: (S?, (S?) -> Unit) -> BooleanType, noinline avoid: (suspend (S?) -> Boolean)? = null, noinline intercept: (S?) -> Unit, noinline validate: ((S?) -> R)? = null, crossinline reactToExposedInterceptorNotCalled: Work = ::rejectWithSecurityException): R = TODO()
+private suspend inline fun <I : U, U : CoroutineScope, S, T : S, R, reified X : TimeoutCancellation> I.repeatBlockOrTimeoutForValidResultUnless(noinline predicate: SuspendedPredicate? = null, noinline delayTime: DelayFunction = NO_DELAY, noinline downTime: DelayFunction, crossinline ex: (AnyArray) -> X = { it.rejectAsException<X>() }, vararg args: Any?, crossinline block: suspend U.() -> T, noinline condition: (S?, (S?) -> Unit) -> BooleanType, noinline avoid: (suspend (S?) -> Boolean)? = null, noinline intercept: (S?) -> Unit, noinline validate: ((S?) -> R)? = null, crossinline reactToExposedInterceptorNotCalled: Work = ::rejectWithSecurityException): R = TODO()
 
 @Suppress("NOTHING_TO_INLINE")
-private inline fun Prediction?.addedNotTimedOut(noinline downTime: DelayFunction): Prediction? =
+private inline fun SuspendedPredicate?.addedNotTimedOut(noinline downTime: DelayFunction): SuspendedPredicate? =
     this?.run { { downTime.isNotTimedOut() and invoke() } }
 
 @Suppress("NOTHING_TO_INLINE")
@@ -148,19 +148,19 @@ private inline fun <I : CoroutineScope> I.addedJobIsActive(job: Job, noinline pr
     prepend(job::isActive, predicate)
 
 @Suppress("NOTHING_TO_INLINE")
-private inline fun <I : CoroutineScope> I.addedSuspendedIsActive(noinline predicate: Prediction?): suspend I.() -> Boolean =
+private inline fun <I : CoroutineScope> I.addedSuspendedIsActive(noinline predicate: SuspendedPredicate?): suspend I.() -> Boolean =
     prepend(IS_ACTIVE, predicate)
 
 @Suppress("NOTHING_TO_INLINE")
-private inline fun <I : CoroutineScope> I.addedSuspendedIsActiveNotTimedOut(noinline downTime: DelayFunction, noinline predicate: Prediction?): suspend I.() -> Boolean =
+private inline fun <I : CoroutineScope> I.addedSuspendedIsActiveNotTimedOut(noinline downTime: DelayFunction, noinline predicate: SuspendedPredicate?): suspend I.() -> Boolean =
     addedSuspendedIsActive(predicate.addedNotTimedOut(downTime))
 
 @Suppress("NOTHING_TO_INLINE")
-private inline fun <I : CoroutineScope> I.addedSuspendedScopeIsActive(scope: CoroutineScope, noinline predicate: Prediction?): suspend I.() -> Boolean =
+private inline fun <I : CoroutineScope> I.addedSuspendedScopeIsActive(scope: CoroutineScope, noinline predicate: SuspendedPredicate?): suspend I.() -> Boolean =
     prepend(scope::isActive, predicate)
 
 @Suppress("NOTHING_TO_INLINE")
-private inline fun <I : CoroutineScope> I.addedSuspendedJobIsActive(job: Job, noinline predicate: Prediction?): suspend I.() -> Boolean =
+private inline fun <I : CoroutineScope> I.addedSuspendedJobIsActive(job: Job, noinline predicate: SuspendedPredicate?): suspend I.() -> Boolean =
     prepend(job::isActive, predicate)
 
 @Suppress("NOTHING_TO_INLINE")
@@ -204,7 +204,7 @@ private suspend inline fun <I : CoroutineScope, reified T : TimeoutCancellation>
     onActive { SchedulerScope.delayOrTimeout(dt, downtime, ex, *args) }
 
 private suspend fun <I : CoroutineScope> I.onActive(block: suspend I.() -> Unit) {
-    if (isActive) this.block() }
+    if (isActive) block() }
 
 @Tag(UNDELAYED)
 internal val NO_DELAY: LongSuspendFunction = suspend { no_delay }
@@ -221,14 +221,14 @@ private val VIEW_MIN_DELAY: LongSuspendFunction = suspend { view_min_delay }
 @Tag(ACTIVE)
 private val CoroutineScope.IS_ACTIVE: BooleanSuspendFunction get() = suspend { isActive }
 
-private inline fun <I : CoroutineScope> I.prepend(noinline isActive: Prediction, noinline predicate: (suspend I.() -> Boolean)?, crossinline operator: BooleanOperator = Boolean::and): suspend I.() -> Boolean =
+private inline fun <I : CoroutineScope> I.prepend(noinline isActive: SuspendedPredicate, noinline predicate: (suspend I.() -> Boolean)?, crossinline operator: BooleanOperator = Boolean::and): suspend I.() -> Boolean =
     with(isActive) {
     if (predicate !== null)
         toCoroutinePrediction(predicate, operator)
     else
         toCoroutinePrediction() }
 
-private inline fun <I : CoroutineScope> I.prepend(noinline isActive: Prediction, noinline predicate: Prediction?, crossinline operator: BooleanOperator = Boolean::and): suspend I.() -> Boolean =
+private inline fun <I : CoroutineScope> I.prepend(noinline isActive: SuspendedPredicate, noinline predicate: SuspendedPredicate?, crossinline operator: BooleanOperator = Boolean::and): suspend I.() -> Boolean =
     with(isActive) {
     if (predicate !== null)
         toCoroutinePrediction(predicate, operator)
@@ -242,27 +242,27 @@ private inline fun <I : CoroutineScope> I.prepend(isActive: BooleanKProperty, no
     else
         toCoroutinePrediction() }
 
-private inline fun <I : CoroutineScope> I.prepend(isActive: BooleanKProperty, noinline predicate: Prediction?, crossinline operator: BooleanOperator = Boolean::and): suspend I.() -> Boolean =
+private inline fun <I : CoroutineScope> I.prepend(isActive: BooleanKProperty, noinline predicate: SuspendedPredicate?, crossinline operator: BooleanOperator = Boolean::and): suspend I.() -> Boolean =
     with(isActive) {
     if (predicate !== null)
         toCoroutinePrediction(predicate, operator)
     else
         toCoroutinePrediction() }
 
-private inline fun <I : CoroutineScope> Prediction.toCoroutinePrediction(noinline predicate: suspend I.() -> Boolean, crossinline operator: BooleanOperator): suspend I.() -> Boolean =
+private inline fun <I : CoroutineScope> SuspendedPredicate.toCoroutinePrediction(noinline predicate: suspend I.() -> Boolean, crossinline operator: BooleanOperator): suspend I.() -> Boolean =
     { invoke().operator(predicate()) }
 
-private inline fun <I : CoroutineScope> Prediction.toCoroutinePrediction(noinline predicate: Prediction, crossinline operator: BooleanOperator): suspend I.() -> Boolean =
+private inline fun <I : CoroutineScope> SuspendedPredicate.toCoroutinePrediction(noinline predicate: SuspendedPredicate, crossinline operator: BooleanOperator): suspend I.() -> Boolean =
     { invoke().operator(predicate()) }
 
 private inline fun <I : CoroutineScope> BooleanKProperty.toCoroutinePrediction(noinline predicate: suspend I.() -> Boolean, crossinline operator: BooleanOperator): suspend I.() -> Boolean =
     { call().operator(predicate()) }
 
-private inline fun <I : CoroutineScope> BooleanKProperty.toCoroutinePrediction(noinline predicate: Prediction, crossinline operator: BooleanOperator): suspend I.() -> Boolean =
+private inline fun <I : CoroutineScope> BooleanKProperty.toCoroutinePrediction(noinline predicate: SuspendedPredicate, crossinline operator: BooleanOperator): suspend I.() -> Boolean =
     { call().operator(predicate()) }
 
 @Suppress("NOTHING_TO_INLINE")
-private inline fun <I : CoroutineScope> Prediction.toCoroutinePrediction(): suspend I.() -> Boolean = { invoke() }
+private inline fun <I : CoroutineScope> SuspendedPredicate.toCoroutinePrediction(): suspend I.() -> Boolean = { invoke() }
 
 @Suppress("NOTHING_TO_INLINE")
 private inline fun <I : CoroutineScope> BooleanKProperty.toCoroutinePrediction(): suspend I.() -> Boolean = { call() }

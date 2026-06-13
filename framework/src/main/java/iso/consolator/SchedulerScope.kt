@@ -309,19 +309,19 @@ sealed interface SchedulerScope : ResolverScope {
         internal suspend fun delayOrYield(dt: Time = no_delay): Boolean = dt.blockOrYield()
 
         internal suspend inline fun <reified T : CancellationException> delayOrCancel(dt: Time = no_delay, msg: String? = null) {
-            runUnlessOrRejectWithException<T, _, _>(msg,
+            runSuspendedUnlessOrRejectWithException<T, _, _>(msg,
                 predicate = currentJob()::isCancelled,
-                block = { dt.blockOrYield() }) }
+                block = dt::blockOrYield) }
 
         internal suspend inline fun <reified T : TimeoutCancellation> delayOrTimeout(dt: Time = no_delay, downtime: Time = no_timeout, msg: String? = null, cause: Throwable? = null) {
-            runUnlessOrRejectWithException<T, _, _>(msg, cause,
+            runSuspendedUnlessOrRejectWithException<T, _, _>(msg, cause,
                 predicate = downtime::isTimedOut,
-                block = { dt.blockOrYield() }) }
+                block = dt::blockOrYield) }
 
         internal suspend inline fun <reified T : TimeoutCancellation> delayOrTimeout(dt: Time = no_delay, downtime: Time = no_timeout, crossinline ex: (AnyArray) -> T, vararg args: Any?) {
-            runUnlessOrRejectWithException<T, _, _>(ex, *args,
+            runSuspendedUnlessOrRejectWithException<T, _, _>(ex, *args,
                 predicate = downtime::isTimedOut,
-                block = { dt.blockOrYield() }) }
+                block = dt::blockOrYield) }
 
         context(_: LifecycleOwner, _: Job)
         @JvmStatic infix fun <R> Job?.then(next: suspend SchedulerScope.(Any?, Job) -> R): AnyCoroutineStep? = result {
@@ -334,7 +334,7 @@ sealed interface SchedulerScope : ResolverScope {
                 last after prev } }
 
         context(_: LifecycleOwner, _: Job)
-        @JvmStatic infix fun Job?.given(predicate: SchedulerPrediction): AnyCoroutineStep? = result {
+        @JvmStatic infix fun Job?.given(predicate: SchedulerPredicate): AnyCoroutineStep? = result {
             attachPredictionToElement(predicate) { last, predicate ->
                 last given predicate } }
 
@@ -344,7 +344,7 @@ sealed interface SchedulerScope : ResolverScope {
                 last given predicate } }
 
         context(_: LifecycleOwner, _: Job)
-        @JvmStatic infix fun Job?.unless(predicate: SchedulerPrediction): AnyCoroutineStep? = result {
+        @JvmStatic infix fun Job?.unless(predicate: SchedulerPredicate): AnyCoroutineStep? = result {
             attachPredictionToElement(predicate) { last, predicate ->
                 last unless predicate } }
 
@@ -388,7 +388,7 @@ sealed interface SchedulerScope : ResolverScope {
                     .take(next) } }
 
         // referables can be employed for optimizations in look-ahead strategy
-        @JvmStatic infix fun <R> (suspend CoroutineScope.() -> R)?.given(predicate: SchedulerPrediction): AnyCoroutineStep? = letResult { cond ->
+        @JvmStatic infix fun <R> (suspend CoroutineScope.() -> R)?.given(predicate: SchedulerPredicate): AnyCoroutineStep? = letResult { cond ->
             attachToContext {
                 if (cond.isCurrentlyTrueGiven(predicate))
                     cond.acceptOnTrue()
@@ -400,7 +400,7 @@ sealed interface SchedulerScope : ResolverScope {
                     cond.acceptOnTrue()
                 else cond.rejectOnTrue() } }
 
-        @JvmStatic infix fun <R> (suspend CoroutineScope.() -> R)?.unless(predicate: SchedulerPrediction): AnyCoroutineStep? = letResult { cond ->
+        @JvmStatic infix fun <R> (suspend CoroutineScope.() -> R)?.unless(predicate: SchedulerPredicate): AnyCoroutineStep? = letResult { cond ->
             attachToContext {
                 if (cond.isCurrentlyFalseGiven(predicate))
                     cond.acceptOnFalse()
@@ -723,7 +723,7 @@ sealed interface SchedulerScope : ResolverScope {
             with(State) { onValueTypeChanged(Resolved::class) {
                 this@Companion().commit(step) } }
 
-        context(_: CoroutineScope)
+        context(scope: CoroutineScope)
         override fun <T> withLazy(callable: KCallable<T>, block: T.(KCallable<T>) -> Any?): CoroutineScope {
             // check for known global values, such as ::mainUncaughtExceptionHandler
             // by active states, such as State[-1]
@@ -893,7 +893,7 @@ sealed class CallableSchedulerScope : CallableResolverScope {
         @JvmStatic infix fun Job?.given(predicate: Predicate): Job? = this
 
         context(_: LifecycleOwner)
-        @JvmStatic infix fun Job?.givenSuspended(predicate: Prediction): Job? = this
+        @JvmStatic infix fun Job?.givenSuspended(predicate: SuspendedPredicate): Job? = this
 
         context(_: LifecycleOwner)
         @JvmStatic infix fun <I : CoroutineScope, R : BooleanType> Job?.givenImplicitly(predicate: suspend I.(Any?, Job) -> R): Job? = this
@@ -905,7 +905,7 @@ sealed class CallableSchedulerScope : CallableResolverScope {
         @JvmStatic infix fun Job?.unless(predicate: Predicate): Job? = this
 
         context(_: LifecycleOwner)
-        @JvmStatic infix fun Job?.unlessSuspended(predicate: Prediction): Job? = this
+        @JvmStatic infix fun Job?.unlessSuspended(predicate: SuspendedPredicate): Job? = this
 
         context(_: LifecycleOwner)
         @JvmStatic infix fun <I : CoroutineScope, R : BooleanType> Job?.unlessImplicitly(predicate: suspend I.(Any?, Job) -> R): Job? = this
@@ -1643,7 +1643,7 @@ private fun markTagsInGroupForJobRelaunch(instance: JobKProperty, block: AnyCoro
         ?.asCoroutineItem()
         ?.onJobRelaunch(job, owner, context, start) } }
 
-internal fun <I : CoroutineScope, R> markTagsForJobContinuationRepeat(step: suspend (I?, Any?) -> R, group: FunctionSet?, job: Job, predicate: Prediction?, delay: DelayFunction): FunctionSet? =
+internal fun <I : CoroutineScope, R> markTagsForJobContinuationRepeat(step: suspend (I?, Any?) -> R, group: FunctionSet?, job: Job, predicate: SuspendedPredicate?, delay: DelayFunction): FunctionSet? =
     group?.apply {
     step.asReference().let { block ->
     block.tag?.also { tag ->
@@ -1652,7 +1652,7 @@ internal fun <I : CoroutineScope, R> markTagsForJobContinuationRepeat(step: susp
         ).asCoroutineItem()
         ?.onJobContinuationRepeat(step, block, tag, job, predicate, delay) } } }
 
-internal fun <I : CoroutineScope, S, R> markTagsForJobExtensionRepeat(step: suspend (I?, Any?, S) -> R, group: FunctionSet?, job: Job, predicate: Prediction?, delay: DelayFunction): FunctionSet? = TODO()
+internal fun <I : CoroutineScope, S, R> markTagsForJobExtensionRepeat(step: suspend (I?, Any?, S) -> R, group: FunctionSet?, job: Job, predicate: SuspendedPredicate?, delay: DelayFunction): FunctionSet? = TODO()
 
 internal fun markTagsForSeqAttach(tag: Any?, step: AnyTriple, index: Int): TagType? =
     tag?.asTagType()?.also { tag ->
@@ -1915,8 +1915,8 @@ typealias SchedulerStep = suspend CoroutineScope.(Any?, Job) -> SchedulerStepIde
 fun interface SchedulerFunction : suspend (CoroutineScope, Any?, Job) -> SchedulerStepIdentityType
 private typealias AnySchedulerStep = suspend CoroutineScope.(Any?, Job) -> Any?
 fun interface AnySchedulerFunction : suspend (CoroutineScope, Any?, Job) -> Any?
-internal typealias SchedulerPrediction = suspend CoroutineScope.(Any?, Job) -> PredictionIdentityType
-fun interface SchedulerPredicate : suspend (CoroutineScope, Any?, Job) -> PredicateIdentityType
+internal typealias SchedulerPredicate = suspend CoroutineScope.(Any?, Job) -> PredictionIdentityType
+fun interface SchedulerPrediction : suspend (CoroutineScope, Any?, Job) -> PredicateIdentityType
 
 internal typealias SchedulerStepIdentityType = Any?
 
@@ -1931,7 +1931,7 @@ private typealias JobExtensionIdentityType = Any?
 private typealias JobExtensionDefaultIdentityType = Unit
 
 private typealias JobPredicate = (Job) -> PredicateIdentityType
-internal typealias Prediction = suspend () -> PredicateIdentityType
+internal typealias SuspendedPredicate = suspend () -> PredicateIdentityType
 
 internal typealias PropertyBuildCondition = suspend (AnyKProperty, TagType, AnyStep) -> PropertyBuildConditionIdentityType
 private typealias PropertyPredicate = suspend (AnyKProperty) -> PredictionIdentityType

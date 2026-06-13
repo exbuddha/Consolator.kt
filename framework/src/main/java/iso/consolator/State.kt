@@ -44,49 +44,49 @@ internal fun <R, S : R> KCallable<R>.receiveUniquely(value: S): S = value
 internal fun <R, S : R> KCallable<R>.receive(value: S): S =
     receiveUniquely(value).also(run(::asKMutableProperty)!!::setInstance)
 
-context(_: AnyKProperty)
-internal fun <R, S : R> KCallable<R>.receive(value: S): S =
-    run { receiveUniquely(value).also(run(::asKMutableProperty)!!::setInstance) }
+//context(_: AnyKProperty)
+//internal fun <R, S : R> KCallable<R>.receive(value: S): S =
+//    run { receiveUniquely(value).also(run(::asKMutableProperty)!!::setInstance) }
 
 internal fun <R> KCallable<R>.determine(vararg subroutine: KCallable<R>? = asTypedArray()): KCallable<R> = this
 
-context(_: AnyKProperty)
-internal fun <R> KCallable<R>.determine(vararg subroutine: KCallable<R>? = asTypedArray()): KCallable<R> = this
+//context(_: AnyKProperty)
+//internal fun <R> KCallable<R>.determine(vararg subroutine: KCallable<R>? = asTypedArray()): KCallable<R> = this
 
 internal fun <R> KCallable<R>.perceive(vararg subroutine: KCallable<R>? = asTypedArray()): KCallable<R> = this
 
-context(_: AnyKProperty)
-internal fun <R> KCallable<R>.perceive(vararg subroutine: KCallable<R>? = asTypedArray()): KCallable<R> = this
+//context(_: AnyKProperty)
+//internal fun <R> KCallable<R>.perceive(vararg subroutine: KCallable<R>? = asTypedArray()): KCallable<R> = this
 
 internal fun <R> KCallable<R>.satisfy(vararg subroutine: KCallable<R>? = asTypedArray()): KCallable<R> = this
 
-context(_: AnyKProperty)
-internal fun <R> KCallable<R>.satisfy(vararg subroutine: KCallable<R>? = asTypedArray()): KCallable<R> = this
+//context(_: AnyKProperty)
+//internal fun <R> KCallable<R>.satisfy(vararg subroutine: KCallable<R>? = asTypedArray()): KCallable<R> = this
 
 internal fun <R> KCallable<R>.falsify(vararg subroutine: KCallable<R>? = asTypedArray()): KCallable<R> = this
 
-context(_: AnyKProperty)
-internal fun <R> KCallable<R>.falsify(vararg subroutine: KCallable<R>? = asTypedArray()): KCallable<R> = this
+//context(_: AnyKProperty)
+//internal fun <R> KCallable<R>.falsify(vararg subroutine: KCallable<R>? = asTypedArray()): KCallable<R> = this
 
 internal fun <R> KCallable<R>.fulfill(vararg subroutine: KCallable<R>? = asTypedArray()): KCallable<R> = this
 
-context(_: AnyKProperty)
-internal fun <R> KCallable<R>.fulfill(vararg subroutine: KCallable<R>? = asTypedArray()): KCallable<R> = this
+//context(_: AnyKProperty)
+//internal fun <R> KCallable<R>.fulfill(vararg subroutine: KCallable<R>? = asTypedArray()): KCallable<R> = this
 
 internal fun <R> KCallable<R>.forfeit(vararg subroutine: KCallable<R>? = asTypedArray()): KCallable<R> = this
 
-context(_: AnyKProperty)
-internal fun <R> KCallable<R>.forfeit(vararg subroutine: KCallable<R>? = asTypedArray()): KCallable<R> = this
+//context(_: AnyKProperty)
+//internal fun <R> KCallable<R>.forfeit(vararg subroutine: KCallable<R>? = asTypedArray()): KCallable<R> = this
 
 internal fun <R> KCallable<R>.resolve(vararg subroutine: KCallable<R>? = asTypedArray()): KCallable<R> = this
 
-context(_: AnyKProperty)
-internal fun <R> KCallable<R>.resolve(vararg subroutine: KCallable<R>? = asTypedArray()): KCallable<R> = this
+//context(_: AnyKProperty)
+//internal fun <R> KCallable<R>.resolve(vararg subroutine: KCallable<R>? = asTypedArray()): KCallable<R> = this
 
 internal fun <R> KCallable<R>.synchronize(block: () -> R): R = synchronized(this, block)
 
-context(_: AnyKProperty)
-internal fun <R> KCallable<R>.synchronize(block: () -> R): R = synchronized(this, block)
+//context(_: AnyKProperty)
+//internal fun <R> KCallable<R>.synchronize(block: () -> R): R = synchronized(this, block)
 
 internal operator fun <R> KCallable<R>.plus(lock: AnyKCallable): KCallable<R> = this
 

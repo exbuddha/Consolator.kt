@@ -55,17 +55,17 @@ internal open class CoroutineItem<R>(target: KCallable<R>) : Item<R>(target) {
         onSaveLifecycleOwner(owner)
         .onJobLaunch(job, context, start)
 
-    open fun <I : CoroutineScope, T> onJobContinuationRepeat(block: suspend (I?, Any?) -> T, self: AnyKCallable, tag: Tag, job: Job, predicate: Prediction?, delay: DelayFunction): CoroutineItem<R> {
+    open fun <I : CoroutineScope, T> onJobContinuationRepeat(block: suspend (I?, Any?) -> T, self: AnyKCallable, tag: Tag, job: Job, predicate: SuspendedPredicate?, delay: DelayFunction): CoroutineItem<R> {
         // optionally, replace target with self
         self.asType<KCallable<R>>()?.apply(::setTarget)
         updateJob(job, predicate, delay)
         return this }
 
-    open fun <I : CoroutineScope, S, T> onJobExtensionRepeat(block: suspend (I?, Any?, S) -> T, self: AnyKCallable, tag: Tag, job: Job, predicate: Prediction?, delay: DelayFunction): CoroutineItem<R> {
+    open fun <I : CoroutineScope, S, T> onJobExtensionRepeat(block: suspend (I?, Any?, S) -> T, self: AnyKCallable, tag: Tag, job: Job, predicate: SuspendedPredicate?, delay: DelayFunction): CoroutineItem<R> {
         updateJob(job, predicate, delay)
         return this }
 
-    private fun updateJob(job: Job, predicate: Prediction?, delay: DelayFunction) {
+    private fun updateJob(job: Job, predicate: SuspendedPredicate?, delay: DelayFunction) {
         onSaveJob(job)
         onSave(PREDICATE, predicate)
         onSave(DELAY, delay) }
@@ -83,7 +83,7 @@ private inline fun Job.applyToElement(crossinline statement: AnyCoroutinePointer
 internal fun <R> Job.attachConjunctionToElement(target: suspend SchedulerScope.(Any?, Job) -> R, operation: (AnyCoroutineStep, suspend SchedulerScope.(Any?, Job) -> R) -> AnyCoroutineStep?): AnyCoroutineStep =
     applyToElement { operation(run(::lastMarkedCoroutineStep), target) }
 
-internal fun Job.attachPredictionToElement(predicate: SchedulerPrediction, operation: (AnyCoroutineStep, SchedulerPrediction) -> AnyCoroutineStep?): AnyCoroutineStep =
+internal fun Job.attachPredictionToElement(predicate: SchedulerPredicate, operation: (AnyCoroutineStep, SchedulerPredicate) -> AnyCoroutineStep?): AnyCoroutineStep =
     applyToElement { operation(run(::lastMarkedCoroutineStep), predicate) }
 
 internal fun Job.attachPredictionToElement(predicate: Predicate, operation: (AnyCoroutineStep, Predicate) -> AnyCoroutineStep?): AnyCoroutineStep =
@@ -113,12 +113,12 @@ internal suspend fun <R> CoroutineScope.take(next: suspend SchedulerScope.(Any?,
     /* throw or return value */
     TODO() }
 
-internal suspend fun <R> (suspend CoroutineScope.() -> R)?.isCurrentlyTrueGiven(predicate: SchedulerPrediction): Boolean = TODO()
+internal suspend fun <R> (suspend CoroutineScope.() -> R)?.isCurrentlyTrueGiven(predicate: SchedulerPredicate): Boolean = TODO()
 
 internal suspend fun <R> (suspend CoroutineScope.() -> R)?.isCurrentlyTrueGiven(predicate: Predicate): Boolean =
     predicate()
 
-internal suspend fun <R> (suspend CoroutineScope.() -> R)?.isCurrentlyFalseGiven(predicate: SchedulerPrediction): Boolean = TODO()
+internal suspend fun <R> (suspend CoroutineScope.() -> R)?.isCurrentlyFalseGiven(predicate: SchedulerPredicate): Boolean = TODO()
 
 internal suspend fun <R> (suspend CoroutineScope.() -> R)?.isCurrentlyFalseGiven(predicate: Predicate): Boolean =
     predicate().not()

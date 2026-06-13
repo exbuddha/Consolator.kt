@@ -133,7 +133,7 @@ internal open class DefaultFragment : BaseFragment(), LifecycleProvider {
                         init {
                             let { view -> with(State) {
                             accept(view, view::descriptor) {
-                                run<_, ViewState>(::initial)
+                                run<_, State>(::initial)
                                 .register(savedInstanceState)
                                 .also { with(view.descriptor) {
                                     it.asViewState()

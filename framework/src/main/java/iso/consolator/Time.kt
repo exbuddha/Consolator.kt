@@ -1,4 +1,4 @@
-@file:JvmName("Time")
+@file:JvmName(JVM_CLASS_NAME)
 @file:JvmMultifileClass
 
 package iso.consolator

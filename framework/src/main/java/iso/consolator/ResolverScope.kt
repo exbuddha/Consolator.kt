@@ -41,23 +41,23 @@ internal typealias CoroutineStepTransactor = Transactor<AnyCoroutineStep, Resolv
 // job extensions provide detailed continuations for each step
 // items group contains and clears them when scope changes to background
 
-internal suspend inline fun <I : U, U : CoroutineScope, T> I.resolveSuspended(noinline predicate: Prediction? = null, noinline delayTime: DelayFunction = NO_DELAY, group: FunctionSet? = null, noinline block: suspend (U?, Any?) -> T) {
+internal suspend inline fun <I : U, U : CoroutineScope, T> I.resolveSuspended(noinline predicate: SuspendedPredicate? = null, noinline delayTime: DelayFunction = NO_DELAY, group: FunctionSet? = null, noinline block: suspend (U?, Any?) -> T) {
     markTagsForJobContinuationRepeat(block, group, currentJob(), predicate, delayTime)
     repeatBlock(predicate, delayTime) {
         blockSuspended(block) } }
 
-internal suspend inline fun <I : U, U : CoroutineScope, T, S> I.resolveExtended(noinline predicate: Prediction? = null, noinline delayTime: DelayFunction = NO_DELAY, group: FunctionSet? = null, initial: S? = null, noinline block: suspend (U?, Any?, S?) -> T) {
+internal suspend inline fun <I : U, U : CoroutineScope, T, S> I.resolveExtended(noinline predicate: SuspendedPredicate? = null, noinline delayTime: DelayFunction = NO_DELAY, group: FunctionSet? = null, initial: S? = null, noinline block: suspend (U?, Any?, S?) -> T) {
     markTagsForJobExtensionRepeat(block, group, currentJob(), predicate, delayTime)
     repeatBlock(predicate, delayTime) {
         blockExtended(initial, block) } }
 
 // convert to contextual function in I
-internal suspend inline fun <I : U, U : CoroutineScope, T> I.resolveSuspendedImplicitly(noinline predicate: Prediction? = null, noinline delayTime: DelayFunction = NO_DELAY, noinline block: suspend (U?, Any?) -> T) =
+internal suspend inline fun <I : U, U : CoroutineScope, T> I.resolveSuspendedImplicitly(noinline predicate: SuspendedPredicate? = null, noinline delayTime: DelayFunction = NO_DELAY, noinline block: suspend (U?, Any?) -> T) =
     repeatBlock(predicate, delayTime) {
         /* implicit<I>() */ blockSuspended(block) }
 
 // convert to contextual function in I
-internal suspend inline fun <I : U, U : CoroutineScope, T, S> I.resolveExtendedImplicitly(noinline predicate: Prediction? = null, noinline delayTime: DelayFunction = NO_DELAY, initial: S? = null, noinline block: suspend (U?, Any?, S?) -> T) =
+internal suspend inline fun <I : U, U : CoroutineScope, T, S> I.resolveExtendedImplicitly(noinline predicate: SuspendedPredicate? = null, noinline delayTime: DelayFunction = NO_DELAY, initial: S? = null, noinline block: suspend (U?, Any?, S?) -> T) =
     repeatBlock(predicate, delayTime) {
         /* implicit<I>() */ blockExtended(initial, block) }
 

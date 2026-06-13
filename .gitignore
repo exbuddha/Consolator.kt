@@ -6,6 +6,7 @@
 !/gradle/
 !/gradle/wrapper/
 !/gradle/wrapper/gradle-wrapper.properties
+!/gradle/gradle-daemon-jvm.properties
 !gradle.properties
 !settings.gradle.kts
 

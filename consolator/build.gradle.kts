@@ -1,50 +1,58 @@
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
 }
 
 android {
     namespace = "net.consolator"
 
     compileSdk {
-        version = release(36)
+        version = release(37) {
+            minorApiLevel = 0
+        }
     }
-
-    buildFeatures.buildConfig = true
 
     defaultConfig {
         applicationId = "net.consolator"
         minSdk = 31
-        targetSdk = 36
+        targetSdk = 37
         versionCode = 1
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    buildFeatures.buildConfig = true
+
     buildTypes {
-        release {
+        debug {
             signingConfig = signingConfigs.getByName("debug")
             isMinifyEnabled = false
+
+            optimization {
+                enable = false
+            }
+        }
+
+        release {
+            isMinifyEnabled = true
+            isShrinkResources = true
         }
     }
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
+        sourceCompatibility = JavaVersion.VERSION_21
+        targetCompatibility = JavaVersion.VERSION_21
     }
 }
 
 kotlin {
-    jvmToolchain(17)
+    jvmToolchain(21)
 
     tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile::class.java).all {
         compilerOptions {
             progressiveMode = true
             freeCompilerArgs.addAll(
                 "-Xjvm-default=all",
-                "-Xcontext-parameters",
-                "-Xnested-type-aliases",
                 "-Xreturn-value-checker=disable",
             )
         }
@@ -61,11 +69,11 @@ dependencies {
     implementation(libs.androidx.fragment)
     implementation(libs.reflect)
 
-    implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
+    implementation(libs.androidx.core.ktx)
     implementation(libs.material)
 
     testImplementation(libs.junit)
-    androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
+    androidTestImplementation(libs.androidx.junit)
 }
