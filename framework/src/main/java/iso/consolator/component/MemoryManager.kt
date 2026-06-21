@@ -1,5 +1,6 @@
 package iso.consolator.component
 
+import abs.consolator.MutableGrid
 import iso.consolator.AnyKMutableProperty
 import iso.consolator.Lock
 import iso.consolator.Resolver
@@ -22,20 +23,10 @@ interface MemoryManager : Resolver {
             (State of property isNot Lock.Closed))
             property.expire() } }
 
-    companion object Expiry : MutableSet<Lifetime> {
-        override fun add(element: Lifetime) = false
-
-        override fun addAll(elements: LifetimeElements) = false
-
-        override fun clear() {}
+    companion object Expiry : Set<Lifetime> {
+        private lateinit var grid: MutableGrid<Entry>
 
         override fun iterator(): MutableIterator<Lifetime> = TODO()
-
-        override fun remove(element: Lifetime): Boolean = false
-
-        override fun removeAll(elements: LifetimeElements) = false
-
-        override fun retainAll(elements: LifetimeElements) = false
 
         override fun contains(element: Lifetime) = false
 
@@ -45,6 +36,33 @@ interface MemoryManager : Resolver {
 
         @JvmStatic override val size: Int
             get() = 0
+
+        private interface Entry {
+            val code: Int
+        }
+
+        /** Expires when parent expires. */
+        private interface ChildEntry : Entry {
+            val parent: Int?
+
+            class Instance(override val code: Int, override val parent: Int?) : ChildEntry
+        }
+
+        /** Expires when all siblings expire. */
+        private interface SiblingEntry : Entry {
+            fun addSibling(code: Int)
+
+            class Instance(override val code: Int) : SiblingEntry {
+                override fun addSibling(code: Int) {}
+            }
+        }
+
+        /** Expires either when parent or all siblings expire. */
+        private interface RelativeEntry : ChildEntry, SiblingEntry {
+            class Instance(override val code: Int, override val parent: Int?) : RelativeEntry {
+                override fun addSibling(code: Int) {}
+            }
+        }
     }
 
     override fun commit(vararg context: Any?): Unit? =
